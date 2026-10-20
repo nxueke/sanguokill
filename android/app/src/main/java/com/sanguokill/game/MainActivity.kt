@@ -274,8 +274,17 @@ class MainActivity : Activity() {
             clipboard.setPrimaryClip(android.content.ClipData.newPlainText("房间码", state.optString("code")))
             showToast("房间码已复制。")
         })
-        if (state.optString("status") == "waiting" && state.optString("mode") == "double_general") {
-            root.addView(text("双将选择：选择两名不同武将后保存；每位玩家都需要完成选择。", 14f))
+        val viewerRole = players?.let { array ->
+            (0 until array.length()).mapNotNull { array.optJSONObject(it) }
+                .firstOrNull { it.optString("id") == playerId }?.optString("role")
+        }
+        val canSelectDualGenerals = state.optString("mode") == "double_general" ||
+            (state.optString("mode") == "duel_lord" && viewerRole == "landlord")
+        if (state.optString("status") == "waiting" && canSelectDualGenerals) {
+            val selectionHint = if (state.optString("mode") == "duel_lord")
+                "你是地主：选择两名武将后保存，农民不需要选择。"
+                else "双将选择：选择两名不同武将后保存；每位玩家都需要完成选择。"
+            root.addView(text(selectionHint, 14f))
             val labels = generalOptions.map { it.second }
             val firstSpinner = Spinner(this)
             firstSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, labels)
