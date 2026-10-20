@@ -1,5 +1,28 @@
 /** Minimal authoritative rules core. All mutations must run on the server. */
 export const GAME_MODES = Object.freeze({ STANDARD: 'standard', DUEL_LORD: 'duel_lord', DOUBLE_GENERAL: 'double_general' });
+export const IDENTITY_ROLES = Object.freeze({ LORD: 'lord', LOYALIST: 'loyalist', REBEL: 'rebel', RENEGADE: 'renegade' });
+
+/** Standard identity-role counts for 3–10 players. The lord is always first. */
+export function assignIdentityRoles(playerCount, random = Math.random) {
+  if (!Number.isInteger(playerCount) || playerCount < 3 || playerCount > 10) {
+    throw new RangeError('playerCount must be an integer from 3 to 10');
+  }
+  if (typeof random !== 'function') throw new TypeError('random must be a function');
+  const loyalists = Math.floor((playerCount - 2) / 3);
+  const rebels = playerCount - 2 - loyalists;
+  const roles = [
+    IDENTITY_ROLES.LORD,
+    ...Array(loyalists).fill(IDENTITY_ROLES.LOYALIST),
+    ...Array(rebels).fill(IDENTITY_ROLES.REBEL),
+    IDENTITY_ROLES.RENEGADE,
+  ];
+  // Keep the lord in seat 1; shuffle all other roles for replayability.
+  for (let i = roles.length - 1; i > 1; i--) {
+    const j = 1 + Math.floor(Math.max(0, Math.min(0.999999999, random())) * i);
+    [roles[i], roles[j]] = [roles[j], roles[i]];
+  }
+  return roles;
+}
 
 export function createGameState({ playerCount, mode = GAME_MODES.STANDARD, deck = [] }) {
   if (!Number.isInteger(playerCount) || playerCount < 3 || playerCount > 10) {
@@ -11,7 +34,7 @@ export function createGameState({ playerCount, mode = GAME_MODES.STANDARD, deck 
     hp: 4, maxHp: 4, hand: [], alive: true, generals: [], role: null, marks: {},
   }));
   return {
-    version: 1, status: 'waiting', mode, playerCount, players,
+    version: 1, status: 'waiting', mode, playerCount, players, winningSide: null,
     deck: [...deck], discard: [], currentPlayerIndex: 0, turnPhase: 'waiting',
     turnNumber: 0, winner: null, log: [],
   };
