@@ -330,7 +330,7 @@ class MainActivity : Activity() {
                             showToast("【闪】只能在受到【杀】时响应。")
                         } else {
                             val action = JSONObject().put("type", "play_card").put("cardId", cardId)
-                            if (kind == "attack") {
+                            if (kind == "attack" || kind == "steal") {
                                 val target = players?.let { array ->
                                     (0 until array.length()).mapNotNull { array.optJSONObject(it) }
                                         .firstOrNull { it.optString("id") == selectedTargetId && it.optBoolean("alive", true) }
@@ -387,6 +387,8 @@ class MainActivity : Activity() {
         "attack" -> "攻击"
         "heal" -> "回复"
         "dodge" -> "闪避"
+        "draw2" -> "摸两张牌"
+        "steal" -> "获得目标随机一张手牌"
         else -> kind
     }
 
