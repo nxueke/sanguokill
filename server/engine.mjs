@@ -1,5 +1,15 @@
 /** Minimal authoritative rules core. All mutations must run on the server. */
 export const GAME_MODES = Object.freeze({ STANDARD: 'standard', DUEL_LORD: 'duel_lord', DOUBLE_GENERAL: 'double_general' });
+
+export const GENERAL_CATALOG = Object.freeze([
+  Object.freeze({ id: 'wei_guard', name: '魏之坚守', maxHp: 4 }),
+  Object.freeze({ id: 'shu_blade', name: '蜀之猛进', maxHp: 4 }),
+  Object.freeze({ id: 'wu_sage', name: '吴之谋略', maxHp: 3 }),
+  Object.freeze({ id: 'healer', name: '济世医者', maxHp: 3 }),
+  Object.freeze({ id: 'iron_wall', name: '铁壁校尉', maxHp: 4 }),
+  Object.freeze({ id: 'swift_arrow', name: '追风神射', maxHp: 4 }),
+]);
+
 export const IDENTITY_ROLES = Object.freeze({ LORD: 'lord', LOYALIST: 'loyalist', REBEL: 'rebel', RENEGADE: 'renegade', LANDLORD: 'landlord', PEASANT: 'peasant' });
 
 /** Standard identity-role counts for 3–10 players. The lord is always first. */
