@@ -3,6 +3,8 @@ package com.sanguokill.game
 import android.app.Activity
 import android.os.Bundle
 import android.graphics.Typeface
+import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.widget.Button
 import android.widget.EditText
@@ -63,6 +65,8 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.statusBarColor = Color.rgb(18, 43, 38)
+        window.navigationBarColor = Color.rgb(18, 43, 38)
         showLobby()
     }
 
@@ -73,40 +77,87 @@ class MainActivity : Activity() {
         super.onDestroy()
     }
 
+    private val ink = Color.rgb(31, 39, 35)
+    private val paper = Color.rgb(246, 239, 220)
+    private val jade = Color.rgb(24, 57, 48)
+    private val jadeLight = Color.rgb(40, 83, 67)
+    private val gold = Color.rgb(205, 166, 87)
+    private val vermilion = Color.rgb(133, 47, 39)
+
+    private fun rounded(color: Int, radiusDp: Float = 14f, strokeColor: Int? = null): GradientDrawable =
+        GradientDrawable().apply {
+            setColor(color)
+            cornerRadius = radiusDp * resources.displayMetrics.density
+            if (strokeColor != null) setStroke((resources.displayMetrics.density).toInt().coerceAtLeast(1), strokeColor)
+        }
+
     private fun text(value: String, size: Float = 16f, bold: Boolean = false): TextView =
         TextView(this).apply {
             text = value
             textSize = size
+            setTextColor(paper)
             if (bold) setTypeface(typeface, Typeface.BOLD)
-            setPadding(12, 8, 12, 8)
+            setPadding(12, 9, 12, 9)
+            if (size >= 22f) {
+                setTextColor(gold)
+                setPadding(12, 16, 12, 10)
+            }
         }
 
     private fun button(label: String, action: () -> Unit): Button =
-        Button(this).apply { text = label; setOnClickListener { action() } }
+        Button(this).apply {
+            text = label
+            isAllCaps = false
+            textSize = 15f
+            setTextColor(paper)
+            background = rounded(if (label.contains("离开") || label.contains("返回")) vermilion else jadeLight, 12f, gold)
+            stateListAnimator = null
+            minimumHeight = (48 * resources.displayMetrics.density).toInt()
+            setPadding(14, 8, 14, 8)
+            val params = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+            params.setMargins(0, 5, 0, 5)
+            layoutParams = params
+            setOnClickListener { action() }
+        }
 
     private fun column(): LinearLayout = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
-        setPadding(16, 12, 16, 16)
+        setPadding(16, 14, 16, 20)
+        setBackgroundColor(jade)
     }
 
     private fun input(hintText: String, value: String): EditText =
-        EditText(this).apply { hint = hintText; setText(value); setSingleLine(true) }
+        EditText(this).apply {
+            hint = hintText
+            setText(value)
+            setSingleLine(true)
+            setTextColor(paper)
+            setHintTextColor(Color.rgb(186, 190, 176))
+            setPadding(14, 10, 14, 10)
+            background = rounded(Color.rgb(34, 69, 58), 12f, gold)
+        }
 
     private fun showLobby() {
         val root = column()
-        root.addView(text("三国卡牌 · 开发版", 26f, true))
-        root.addView(text("本地对局可直接体验；在线房间需要先运行或部署游戏服务端。", 16f))
+        root.addView(text("三国杀 · 群雄逐鹿", 28f, true))
+        root.addView(text("STRATEGY • CARDS • THREE KINGDOMS", 11f, true))
+        root.addView(text("谋定天下，出牌决胜。选择玩法，邀友入局。", 16f))
+        root.addView(text("玩法入口", 20f, true))
         root.addView(button("开始本地对局") { startLocalGame() })
         root.addView(button("多人在线房间") { showOnlineLobby() })
         root.addView(button("项目说明") {
-            Toast.makeText(this, "这是早期开发版，基础包、军争包及完整身份/技能规则仍在开发。", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "当前为持续开发原型；完整基础包、军争包、武将技能与正式联机仍需逐项实现和测试。", Toast.LENGTH_LONG).show()
         })
         setContentView(root)
     }
 
     private fun showOnlineLobby() {
         val root = column()
-        root.addView(text("多人在线 · 连接设置", 23f, true))
+        root.addView(text("多人对局", 26f, true))
+        root.addView(text("ONLINE LOBBY  /  连接与房间", 12f, true))
         root.addView(text("服务端地址（模拟器默认值；真机请填写可访问的服务器地址）", 14f))
         serverUrlInput = input("ws://主机地址:3000/ws", serverUrlValue)
         root.addView(serverUrlInput)
@@ -242,7 +293,8 @@ class MainActivity : Activity() {
     private fun renderOnlineState(state: JSONObject) {
         latestRoomState = state
         val root = column()
-        root.addView(text("在线房间 · " + state.optString("code"), 23f, true))
+        root.addView(text("战局 · " + state.optString("code"), 26f, true))
+        root.addView(text("MATCH ROOM  /  战场情报", 12f, true))
         root.addView(text("模式：" + modeLabel(state.optString("mode")) + "    状态：" + state.optString("status"), 15f))
         val players = state.optJSONArray("players")
         val playerLines = mutableListOf<String>()
@@ -522,7 +574,8 @@ class MainActivity : Activity() {
 
     private fun renderGame() {
         val root = column()
-        root.addView(text("三国卡牌 · 本地对局", 23f, true))
+        root.addView(text("演武场 · 本地对局", 26f, true))
+        root.addView(text("PRACTICE MODE  /  规则体验", 12f, true))
         status = text("", 17f, true)
         root.addView(status)
         root.addView(text("对手手牌：未知 · 当前为本地规则测试", 14f))
