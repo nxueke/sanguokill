@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createGameState, startGame, drawCards, playCard, applyDamage, advanceTurn, GAME_MODES, IDENTITY_ROLES, assignIdentityRoles } from '../server/engine.mjs';
+import { createGameState, startGame, drawCards, playCard, applyDamage, advanceTurn, GAME_MODES, IDENTITY_ROLES, assignIdentityRoles, assignDuelLordRoles } from '../server/engine.mjs';
 
 test('accepts player counts 3 through 10 and rejects out-of-range counts', () => {
   for (let n = 3; n <= 10; n++) assert.equal(createGameState({ playerCount: n }).players.length, n);
@@ -102,4 +102,18 @@ test('drawing reshuffles discarded cards when the deck runs out', () => {
   assert.equal(drawn.length, 3);
   assert.deepEqual(new Set(drawn.map(card => card.id)), new Set(['draw-1', 'discard-1', 'discard-2']));
   assert.equal(game.discard.length, 0);
+});
+
+test('landlord mode assigns one landlord and two peasants and checks team victory', () => {
+  const roles = assignDuelLordRoles(3, () => 0.2);
+  assert.equal(roles.filter(role => role === 'landlord').length, 1);
+  assert.equal(roles.filter(role => role === 'peasant').length, 2);
+  assert.throws(() => assignDuelLordRoles(4), /exactly 3/);
+  const game = createGameState({ playerCount: 3, mode: GAME_MODES.DUEL_LORD });
+  startGame(game, { roles: ['landlord', 'peasant', 'peasant'] });
+  applyDamage(game, { targetId: 'p2', amount: 4 });
+  applyDamage(game, { targetId: 'p3', amount: 4 });
+  assert.equal(game.status, 'finished');
+  assert.equal(game.winningSide, 'landlord');
+  assert.equal(game.winner, 'p1');
 });
