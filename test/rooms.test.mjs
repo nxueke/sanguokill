@@ -34,6 +34,8 @@ test('personal snapshots hide other players’ hands', () => {
   assert.equal(hostView.players.find(p => p.id === host.id).hand.length, 4);
   assert.equal(hostView.players.find(p => p.id === guest.id).hand, undefined);
   assert.equal(hostView.players.find(p => p.id === guest.id).handCount, 4);
+  assert.ok(hostView.players.find(p => p.id === host.id).role);
+  assert.equal(hostView.players.find(p => p.id === guest.id).role, undefined);
 });
 
 test('reconnect token restores a disconnected player within grace period', () => {
