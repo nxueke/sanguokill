@@ -243,6 +243,7 @@ class MainActivity : Activity() {
                 val p = players.optJSONObject(i) ?: continue
                 val hostMark = if (p.optBoolean("host")) "（房主）" else ""
                 val connection = if (p.optBoolean("connected")) "在线" else "断线"
+                val armor = p.optString("armor").takeIf { it.isNotBlank() && it != "null" }?.let { " · 装备 $it" } ?: ""
                 val role = p.optString("role").takeIf { it.isNotBlank() && it != "null" }
                 val roleText = role?.let { " · 身份 ${roleLabel(it)}" } ?: ""
                 playerLines.add("${p.optString("name")}$hostMark · 体力 ${p.optInt("hp", 4)} · 手牌 ${p.optInt("handCount")} · $connection$roleText")
