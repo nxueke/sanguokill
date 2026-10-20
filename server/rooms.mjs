@@ -110,14 +110,14 @@ export class RoomManager {
       const heldCard = playerCard(room.game, player.id, action.cardId);
       if (heldCard.kind === 'dodge') throw new Error('【闪】只能在受到【杀】时响应，暂不能主动打出');
       if (heldCard.kind === 'attack' && !action.targetId) throw new Error('使用【杀】必须选择目标');
-      if (heldCard.kind !== 'attack' && action.targetId && action.targetId !== player.id) throw new Error('该牌不能指定其他玩家为目标');
+      if (heldCard.kind !== 'attack' && action.targetId) throw new Error('该牌不能指定目标');
       const played = playCard(room.game, { playerId: player.id, cardId: action.cardId, targetId: action.targetId ?? null });
       const card = played.card;
       if (card.kind === 'attack') applyDamage(room.game, { sourceId: player.id, targetId: played.targetId, amount: 1 });
       if (card.kind === 'heal') {
         const target = room.game.players.find(p => p.id === player.id);
         target.hp = Math.min(target.hp + 1, target.maxHp);
-        room.game.log.push({ type: 'healed', playerId: player.id, amount: target.hp === target.maxHp ? 1 : 0 });
+        room.game.log.push({ type: 'healed', playerId: player.id, hp: target.hp });
       }
       return room;
     }
