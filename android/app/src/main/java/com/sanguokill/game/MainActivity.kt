@@ -251,6 +251,8 @@ class MainActivity : Activity() {
                 val p = players.optJSONObject(i) ?: continue
                 val hostMark = if (p.optBoolean("host")) "（房主）" else ""
                 val connection = if (p.optBoolean("connected")) "在线" else "断线"
+                val bidValue = p.optInt("bid", -1)
+                val bidText = if (bidValue >= 0) " · 叫分 $bidValue" else ""
                 val armor = p.optString("armor").takeIf { it.isNotBlank() && it != "null" }?.let { " · 装备 $it" } ?: ""
                 val role = p.optString("role").takeIf { it.isNotBlank() && it != "null" }
                 val roleText = role?.let { " · 身份 ${roleLabel(it)}" } ?: ""
@@ -258,7 +260,7 @@ class MainActivity : Activity() {
                 val generalText = if (generals != null && generals.length() > 0) " · 武将 " + (0 until generals.length()).map { generals.optString(it) }.joinToString("、") else ""
                 val skills = p.optJSONArray("generalSkills")
                 val skillText = if (skills != null && skills.length() > 0) " · 技能 " + (0 until skills.length()).map { skills.optString(it) }.joinToString("；") else ""
-                playerLines.add(p.optString("name") + hostMark + " · 体力 " + p.optInt("hp", 4) + "/" + p.optInt("maxHp", 4) + " · 手牌 " + p.optInt("handCount") + " · " + connection + armor + roleText + generalText + skillText)
+                playerLines.add(p.optString("name") + hostMark + " · 体力 " + p.optInt("hp", 4) + "/" + p.optInt("maxHp", 4) + " · 手牌 " + p.optInt("handCount") + " · " + connection + bidText + armor + roleText + generalText + skillText)
             }
         }
         root.addView(text(playerLines.joinToString("\n").ifBlank { "等待玩家加入……" }, 15f))
@@ -276,6 +278,12 @@ class MainActivity : Activity() {
             clipboard.setPrimaryClip(android.content.ClipData.newPlainText("房间码", state.optString("code")))
             showToast("房间码已复制。")
         })
+        if (state.optString("status") == "waiting" && state.optString("mode") == "duel_lord" && !state.optBoolean("biddingComplete")) {
+            root.addView(text("斗地主叫分：每位玩家选择 0～3 分；全部提交且至少一人叫分后确定地主。全员不叫可重新叫分。", 14f))
+            root.addView(rowButtonGroup(listOf("不叫地主" to 0, "叫 1 分" to 1, "叫 2 分" to 2, "叫 3 分" to 3)) { bid ->
+                sendOnlineMessage(JSONObject().put("type", "bid_landlord").put("bid", bid))
+            })
+        }
         val viewerRole = players?.let { array ->
             (0 until array.length()).mapNotNull { array.optJSONObject(it) }
                 .firstOrNull { it.optString("id") == playerId }?.optString("role")
@@ -311,7 +319,7 @@ class MainActivity : Activity() {
                 }
             })
         }
-        if (state.optString("status") == "waiting" && state.optString("hostId") == playerId) {
+        if (state.optString("status") == "waiting" && state.optString("hostId") == playerId && (state.optString("mode") != "duel_lord" || state.optBoolean("biddingComplete"))) {
             root.addView(button("开始游戏（至少 3 名玩家）") {
                 sendOnlineMessage(JSONObject().put("type", "start_game"))
             })
@@ -413,6 +421,16 @@ class MainActivity : Activity() {
             else showOnlineLobby()
         })
         setContentView(ScrollView(this).apply { addView(root) })
+    }
+
+    private fun rowButtonGroup(options: List<Pair<String, Int>>, onSelect: (Int) -> Unit): LinearLayout {
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            options.forEach { option ->
+                addView(button(option.first) { onSelect(option.second) },
+                    LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            }
+        }
     }
 
     private fun describeEvent(event: JSONObject): String {
