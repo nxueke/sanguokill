@@ -90,8 +90,11 @@ test('double-general mode requires two distinct selections from every player', (
 test('only landlord selects two generals in landlord mode', () => {
   const manager = new RoomManager();
   const { room, player: host } = manager.create({ name: 'Host', mode: 'duel_lord', maxPlayers: 3 });
-  manager.join({ code: room.code, name: 'Second' });
-  manager.join({ code: room.code, name: 'Third' });
+  const second = manager.join({ code: room.code, name: 'Second' }).player;
+  const third = manager.join({ code: room.code, name: 'Third' }).player;
+  manager.bidLandlord(host.token, 1);
+  manager.bidLandlord(second.token, 3);
+  manager.bidLandlord(third.token, 0);
   const landlordIndex = room.assignedRoles.indexOf('landlord');
   const landlord = room.players[landlordIndex];
   const peasant = room.players[room.assignedRoles.indexOf('peasant')];
@@ -106,4 +109,22 @@ test('only landlord selects two generals in landlord mode', () => {
   assert.deepEqual(landlordState.generals, ['魏之坚守', '吴之谋略']);
   assert.equal(peasantState.generals.length, 0);
   assert.equal(landlordState.maxHp, 3);
+});
+
+test('landlord bidding waits for all players and permits rebidding after everyone passes', () => {
+  const manager = new RoomManager();
+  const { room, player: host } = manager.create({ name: 'Host', mode: 'duel_lord', maxPlayers: 3 });
+  const second = manager.join({ code: room.code, name: 'Second' }).player;
+  const third = manager.join({ code: room.code, name: 'Third' }).player;
+  manager.bidLandlord(host.token, 0);
+  manager.bidLandlord(second.token, 0);
+  manager.bidLandlord(third.token, 0);
+  assert.equal(room.assignedRoles, null);
+  assert.throws(() => manager.start(host.token), /至少一人叫分/);
+  manager.bidLandlord(host.token, 1);
+  manager.bidLandlord(second.token, 2);
+  manager.bidLandlord(third.token, 0);
+  assert.equal(room.landlordBid, 2);
+  assert.equal(room.assignedRoles[1], 'landlord');
+  assert.throws(() => manager.bidLandlord(host.token, 3), /不能再更改/);
 });
