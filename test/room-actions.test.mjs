@@ -2,6 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { RoomManager } from '../server/rooms.mjs';
 
+function attackCardId(room, playerId) {
+  const player = room.game.players.find(p => p.id === playerId);
+  const card = player.hand.find(c => c.kind === 'attack');
+  if (!card) throw new Error('Test fixture expected an attack card in the starting hand');
+  return card.id;
+}
+
 function startedRoom() {
   const manager = new RoomManager();
   const { room, player: host } = manager.create({ name: 'Host', maxPlayers: 3 });
@@ -13,9 +20,9 @@ function startedRoom() {
 
 test('attack card requires a target and applies server-side damage', () => {
   const { manager, room, host, guest } = startedRoom();
-  assert.throws(() => manager.act(host.token, { type: 'play_card', cardId: 'c3' }), /必须选择目标/);
-  assert.equal(room.game.players.find(p => p.id === host.id).hand.some(c => c.id === 'c3'), true);
-  manager.act(host.token, { type: 'play_card', cardId: 'c3', targetId: guest.id });
+  assert.throws(() => manager.act(host.token, { type: 'play_card', cardId: attackCardId(room, host.id) }), /必须选择目标/);
+  assert.equal(room.game.players.find(p => p.id === host.id).hand.some(c => c.id === attackCardId(room, host.id)), true);
+  manager.act(host.token, { type: 'play_card', cardId: attackCardId(room, host.id), targetId: guest.id });
   assert.equal(room.game.players.find(p => p.id === guest.id).hp, 4);
   assert.equal(room.game.pendingResponse.type, 'dodge');
   manager.act(guest.token, { type: 'respond', response: 'pass' });
@@ -59,7 +66,7 @@ test('a player can use at most one attack per turn', () => {
   const { manager, room, host, guest } = startedRoom();
   const hostState = room.game.players.find(p => p.id === host.id);
   hostState.hand.push({ id: 'extra-attack', name: '杀', kind: 'attack' });
-  manager.act(host.token, { type: 'play_card', cardId: 'c3', targetId: guest.id });
+  manager.act(host.token, { type: 'play_card', cardId: attackCardId(room, host.id), targetId: guest.id });
   manager.act(guest.token, { type: 'respond', response: 'pass' });
   assert.throws(
     () => manager.act(host.token, { type: 'play_card', cardId: 'extra-attack', targetId: guest.id }),
@@ -76,7 +83,7 @@ test('a player can use at most one attack per turn', () => {
 test('target can evade an attack with dodge', () => {
   const { manager, room, host, guest } = startedRoom();
   room.game.players.find(p => p.id === guest.id).hand.push({ id: 'guest-dodge', name: '闪', kind: 'dodge' });
-  manager.act(host.token, { type: 'play_card', cardId: 'c3', targetId: guest.id });
+  manager.act(host.token, { type: 'play_card', cardId: attackCardId(room, host.id), targetId: guest.id });
   assert.throws(() => manager.act(host.token, { type: 'draw' }), /等待受/);
   manager.act(guest.token, { type: 'respond', response: 'dodge', cardId: 'guest-dodge' });
   assert.equal(room.game.players.find(p => p.id === guest.id).hp, 4);
@@ -88,7 +95,7 @@ test('a player at zero HP can be rescued with peach', () => {
   const target = room.game.players.find(p => p.id === guest.id);
   target.hp = 1;
   target.hand.push({ id: 'rescue-peach', name: '桃', kind: 'heal' });
-  manager.act(host.token, { type: 'play_card', cardId: 'c3', targetId: guest.id });
+  manager.act(host.token, { type: 'play_card', cardId: attackCardId(room, host.id), targetId: guest.id });
   manager.act(guest.token, { type: 'respond', response: 'pass' });
   assert.equal(target.hp, 0);
   assert.equal(target.alive, true);
@@ -103,7 +110,7 @@ test('a player dies only after all rescue seats pass', () => {
   const { manager, room, host, guest } = startedRoom();
   const target = room.game.players.find(p => p.id === guest.id);
   target.hp = 1;
-  manager.act(host.token, { type: 'play_card', cardId: 'c3', targetId: guest.id });
+  manager.act(host.token, { type: 'play_card', cardId: attackCardId(room, host.id), targetId: guest.id });
   manager.act(guest.token, { type: 'respond', response: 'pass' });
   assert.equal(target.alive, true);
   manager.act(guest.token, { type: 'rescue', response: 'pass' });
@@ -163,7 +170,7 @@ test('Shu dual general permits a second attack but not a third', () => {
     { id: 'extra-attack-1', name: '杀', kind: 'attack' },
     { id: 'extra-attack-2', name: '杀', kind: 'attack' }
   );
-  manager.act(host.token, { type: 'play_card', cardId: 'c3', targetId: guest.id });
+  manager.act(host.token, { type: 'play_card', cardId: attackCardId(room, host.id), targetId: guest.id });
   manager.act(guest.token, { type: 'respond', response: 'pass' });
   manager.act(host.token, { type: 'play_card', cardId: 'extra-attack-1', targetId: guest.id });
   manager.act(guest.token, { type: 'respond', response: 'pass' });
@@ -181,7 +188,7 @@ test('Healer general increases Peach healing and Iron Wall blocks one attack', (
   manager.act(host.token, { type: 'play_card', cardId: 'healer-peach' });
   assert.equal(hostState.hp, 4);
   guestState.generalIds = ['iron_wall'];
-  manager.act(host.token, { type: 'play_card', cardId: 'c3', targetId: guest.id });
+  manager.act(host.token, { type: 'play_card', cardId: attackCardId(room, host.id), targetId: guest.id });
   manager.act(guest.token, { type: 'respond', response: 'pass' });
   assert.equal(guestState.hp, 4);
   assert.equal(guestState.marks.ironWallUsed, true);
