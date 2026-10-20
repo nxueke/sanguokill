@@ -10,16 +10,17 @@ An original, extensible multiplayer Chinese-style card game project. This reposi
 - `android/` (planned): native Android client.
 - `.github/workflows/`: automated tests and later Android build.
 
-The server is authoritative: clients must submit actions, never dictate game state. Later network work will add authenticated room membership, WebSocket action messages, reconnection snapshots, and per-player visibility filtering.
+The server is authoritative: clients submit actions, never dictate game state. Future networking work will add authenticated room membership, WebSocket action messages, reconnection snapshots, and per-player visibility filtering.
 
-## Current implementation
+## Implemented foundation
 
 - Game state supports 3–10 players.
-- Initial mode identifiers: standard, landlord duel, and double-general.
+- Mode identifiers for standard, landlord duel, and double-general.
 - Start-game validation, draw, basic card-play validation, damage, turn advancement, and simple last-player-standing victory.
 - Automated tests for core invariants.
+- HTTP health endpoint at `/health`.
 
-This is a foundation, not a complete implementation of the official rules. Card effects, role-specific victory, dying/rescue, equipment, delayed tricks, full landlord rules, and double-general skill interactions remain future work.
+This is a foundation, not a complete implementation of the official rules. Card effects, role-specific victory, dying/rescue, equipment, delayed tricks, full landlord rules, double-general skill interactions, and multiplayer WebSocket rooms remain future work.
 
 ## Requirements
 
