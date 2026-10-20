@@ -155,7 +155,7 @@ export class RoomManager {
           hand: p.id === viewerId ? (gp?.hand ?? []) : undefined, role: p.id === viewerId ? (gp?.role ?? null) : undefined };
       }),
       currentPlayerId: game?.players[game.currentPlayerIndex]?.id ?? null,
-      turnNumber: game?.turnNumber ?? 0, winner: game?.winner ?? null,
+      turnNumber: game?.turnNumber ?? 0, winner: game?.winner ?? null, winningSide: game?.winningSide ?? null,
       discardCount: game?.discard.length ?? 0,
       log: game?.log.slice(-20) ?? [],
     };
