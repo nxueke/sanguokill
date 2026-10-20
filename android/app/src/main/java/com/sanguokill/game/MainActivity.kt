@@ -116,7 +116,7 @@ class MainActivity : Activity() {
         root.addView(maxPlayersInput)
         root.addView(text("游戏模式", 15f, true))
         modeInput = Spinner(this)
-        modeInput.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, listOf("身份模式", "斗地主模式（3 人）", "双将模式（规则开发中）"))
+        modeInput.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, listOf("身份模式", "斗地主模式（3 人）", "双将模式"))
         modeInput.setSelection(when (modeValue) { "duel_lord" -> 1; "double_general" -> 2; else -> 0 })
         root.addView(modeInput)
         roomCodeInput = input("加入房间时填写房间码", roomCodeValue)
