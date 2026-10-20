@@ -126,6 +126,28 @@ export function advanceTurn(state) {
 
 export function evaluateVictory(state) {
   const alive = state.players.filter(p => p.alive);
+  const validRoles = new Set(Object.values(IDENTITY_ROLES));
+  const hasIdentityRoles = state.players.every(p => validRoles.has(p.role));
+  if (hasIdentityRoles) {
+    const lordAlive = alive.some(p => p.role === IDENTITY_ROLES.LORD);
+    const rebelsAlive = alive.some(p => p.role === IDENTITY_ROLES.REBEL);
+    const renegadeAlive = alive.some(p => p.role === IDENTITY_ROLES.RENEGADE);
+    let side = null;
+    if (!lordAlive) side = alive.length === 1 && renegadeAlive ? 'renegade' : 'rebels';
+    else if (!rebelsAlive && !renegadeAlive) side = 'lord';
+    else if (alive.length === 1 && renegadeAlive) side = 'renegade';
+    // The lord and renegade duel continues until one is defeated.
+    if (side) {
+      state.status = 'finished';
+      state.turnPhase = 'finished';
+      state.winningSide = side;
+      state.winner = side === 'lord' ? state.players.find(p => p.role === IDENTITY_ROLES.LORD)?.id
+        : side === 'renegade' ? alive.find(p => p.role === IDENTITY_ROLES.RENEGADE)?.id : null;
+      state.log.push({ type: 'game_finished', winner: state.winner, winningSide: side });
+      return state.winner;
+    }
+    return null;
+  }
   if (alive.length <= 1) {
     state.status = 'finished';
     state.turnPhase = 'finished';
