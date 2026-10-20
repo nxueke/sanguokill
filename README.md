@@ -65,15 +65,15 @@ This is a debug APK, not a signed Play Store release. Install only builds you tr
 
 ## Implemented gameplay foundation
 
-- State model supports 3–10 players.
-- Mode identifiers for standard, landlord duel, and double-general.
+- State model supports 3–10 players; the current three-player landlord mode assigns one landlord versus two peasants and checks team victory.
+- Mode identifiers and client selection for identity, three-player landlord, and double-general (double-general character selection and skill effects remain unfinished).
 - Start validation, drawing with discard-pile reshuffle, basic card play, server-side damage, once-per-turn attack limit, dodge response windows, Peach rescue, standard identity role distribution for 3–10 players, and initial role-based victory checks.
 - Room create/join/leave, host start, reconnect token handling, and per-player hand visibility.
 
 ## Remaining work
 
 - Full original card catalogue and individual card effects for the base and war expansion sets.
-- Full official role edge cases, landlord rules, double-general selection and skill combinations.
+- Full official role edge cases, landlord bidding/selection, double-general character selection and skill combinations.
 - Response timeouts, equipment, delayed tricks, and skill triggers; current response/rescue rules are an initial implementation, not a full official rules engine.
 - Deploy the server and run real-device, multi-client online tests.
 - Reconnection and security edge-case tests; deployment and persistence.
