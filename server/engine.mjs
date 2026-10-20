@@ -48,7 +48,7 @@ export function playCard(state, { playerId, cardId, targetId = null }) {
   assertPlaying(state);
   const player = requirePlayer(state, playerId);
   if (!player.alive) throw new Error('Dead players cannot play cards');
-  if (state.players[state.currentPlayerIndex]?.id !== playerId) throw new Error('It is not this player\\'s turn');
+  if (state.players[state.currentPlayerIndex]?.id !== playerId) throw new Error("Not this player's turn");
   const index = player.hand.findIndex(card => card.id === cardId);
   if (index < 0) throw new Error('Card is not in player hand');
   if (targetId !== null) {
