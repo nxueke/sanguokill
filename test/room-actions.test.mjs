@@ -60,6 +60,7 @@ test('a player can use at most one attack per turn', () => {
   const hostState = room.game.players.find(p => p.id === host.id);
   hostState.hand.push({ id: 'extra-attack', name: '杀', kind: 'attack' });
   manager.act(host.token, { type: 'play_card', cardId: 'c3', targetId: guest.id });
+  manager.act(guest.token, { type: 'respond', response: 'pass' });
   assert.throws(
     () => manager.act(host.token, { type: 'play_card', cardId: 'extra-attack', targetId: guest.id }),
     /本回合已经使用过/
