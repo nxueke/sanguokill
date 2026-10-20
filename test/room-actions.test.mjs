@@ -121,3 +121,20 @@ test('landlord room requires exactly three players and assigns hidden roles', ()
   manager.join({ code: room.code, name: 'Fourth' });
   assert.throws(() => manager.start(host.token), /正好 3 名玩家/);
 });
+
+test('draw-two card draws two cards and steal transfers one target card', () => {
+  const { manager, room, host, guest } = startedRoom();
+  const hostState = room.game.players.find(p => p.id === host.id);
+  const guestState = room.game.players.find(p => p.id === guest.id);
+  const beforeDraw = hostState.hand.length;
+  hostState.hand.push({ id: 'draw-two-test', name: '摸二张', kind: 'draw2' });
+  manager.act(host.token, { type: 'play_card', cardId: 'draw-two-test' });
+  assert.equal(hostState.hand.length, beforeDraw + 1);
+
+  hostState.hand.push({ id: 'steal-test', name: '顺手牵羊', kind: 'steal' });
+  const guestBefore = guestState.hand.length;
+  const hostBefore = hostState.hand.length;
+  manager.act(host.token, { type: 'play_card', cardId: 'steal-test', targetId: guest.id });
+  assert.equal(guestState.hand.length, guestBefore - 1);
+  assert.equal(hostState.hand.length, hostBefore);
+});
