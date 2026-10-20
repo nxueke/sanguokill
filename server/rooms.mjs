@@ -88,12 +88,13 @@ export class RoomManager {
     if (room.hostId !== player.id) throw new Error('只有房主可以开始游戏');
     if (room.status !== 'waiting') throw new Error('房间已开始');
     if (room.players.length < 3) throw new Error('至少需要 3 名玩家才能开始');
+    if (room.mode === GAME_MODES.DUEL_LORD && room.players.length !== 3) throw new Error('斗地主模式目前要求正好 3 名玩家');
     const state = createGameState({ playerCount: room.players.length, mode: room.mode, deck: makeStarterDeck() });
     state.players.forEach((p, i) => {
       p.id = room.players[i].id;
       p.name = room.players[i].name;
     });
-    startGame(state, { roles: room.mode === GAME_MODES.STANDARD ? assignIdentityRoles(room.players.length) : [] });
+    startGame(state, { roles: room.mode === GAME_MODES.DUEL_LORD ? assignDuelLordRoles(room.players.length) : assignIdentityRoles(room.players.length) });
     state.players.forEach(p => drawCards(state, p.id, 4));
     state.drawnThisTurn = false;
     state.attacksUsedThisTurn = false;
