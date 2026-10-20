@@ -2,12 +2,12 @@
 export const GAME_MODES = Object.freeze({ STANDARD: 'standard', DUEL_LORD: 'duel_lord', DOUBLE_GENERAL: 'double_general' });
 
 export const GENERAL_CATALOG = Object.freeze([
-  Object.freeze({ id: 'wei_guard', name: '魏之坚守', maxHp: 4 }),
-  Object.freeze({ id: 'shu_blade', name: '蜀之猛进', maxHp: 4 }),
-  Object.freeze({ id: 'wu_sage', name: '吴之谋略', maxHp: 3 }),
-  Object.freeze({ id: 'healer', name: '济世医者', maxHp: 3 }),
-  Object.freeze({ id: 'iron_wall', name: '铁壁校尉', maxHp: 4 }),
-  Object.freeze({ id: 'swift_arrow', name: '追风神射', maxHp: 4 }),
+  Object.freeze({ id: 'wei_guard', name: '魏之坚守', maxHp: 4, skill: '体力上限 4' }),
+  Object.freeze({ id: 'shu_blade', name: '蜀之猛进', maxHp: 4, skill: '每回合可额外使用一张【杀】' }),
+  Object.freeze({ id: 'wu_sage', name: '吴之谋略', maxHp: 3, skill: '使用摸牌锦囊时额外摸一张' }),
+  Object.freeze({ id: 'healer', name: '济世医者', maxHp: 3, skill: '使用【桃】时额外回复一点体力' }),
+  Object.freeze({ id: 'iron_wall', name: '铁壁校尉', maxHp: 4, skill: '每局首次受到【杀】时免疫伤害' }),
+  Object.freeze({ id: 'swift_arrow', name: '追风神射', maxHp: 4, skill: '使用【杀】造成一点额外伤害' }),
 ]);
 
 export const IDENTITY_ROLES = Object.freeze({ LORD: 'lord', LOYALIST: 'loyalist', REBEL: 'rebel', RENEGADE: 'renegade', LANDLORD: 'landlord', PEASANT: 'peasant' });
@@ -62,7 +62,7 @@ export function createGameState({ playerCount, mode = GAME_MODES.STANDARD, deck 
   if (!Object.values(GAME_MODES).includes(mode)) throw new TypeError('Unsupported game mode');
   const players = Array.from({ length: playerCount }, (_, index) => ({
     id: `p${index + 1}`, seat: index, name: `Player ${index + 1}`,
-    hp: 4, maxHp: 4, hand: [], alive: true, generals: [], armor: null, role: null, marks: {},
+    hp: 4, maxHp: 4, hand: [], alive: true, generals: [], generalIds: [], generalSkills: [], armor: null, role: null, marks: {},
   }));
   return {
     version: 1, status: 'waiting', mode, playerCount, players, winningSide: null,
