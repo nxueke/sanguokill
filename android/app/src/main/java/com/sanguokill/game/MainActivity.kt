@@ -36,6 +36,7 @@ class MainActivity : Activity() {
     private var pendingMessage: String? = null
     private var playerToken: String? = null
     private var playerId: String? = null
+    private var selectedTargetId: String? = null
     private var latestRoomState: JSONObject? = null
     private var serverUrlValue = "ws://10.0.2.2:3000/ws"
     private var playerNameValue = "玩家"
@@ -276,6 +277,19 @@ class MainActivity : Activity() {
         }
         if (state.optString("status") == "playing") {
             root.addView(text("当前行动玩家：" + state.optString("currentPlayerId") + "    回合：" + state.optInt("turnNumber"), 15f, true))
+            root.addView(text("攻击目标（点击选择）", 16f, true))
+            if (players != null) {
+                for (i in 0 until players.length()) {
+                    val candidate = players.optJSONObject(i) ?: continue
+                    val candidateId = candidate.optString("id")
+                    if (candidateId == playerId || !candidate.optBoolean("alive", true)) continue
+                    val selected = candidateId == selectedTargetId
+                    root.addView(button((if (selected) "✓ " else "") + candidate.optString("name") + " · 体力 " + candidate.optInt("hp", 4)) {
+                        selectedTargetId = candidateId
+                        renderOnlineState(state)
+                    })
+                }
+            }
             root.addView(button("摸一张牌") {
                 sendOnlineMessage(JSONObject().put("type", "action").put("action", JSONObject().put("type", "draw")))
             })
@@ -309,7 +323,9 @@ class MainActivity : Activity() {
                             if (kind == "attack") {
                                 val target = players?.let { array ->
                                     (0 until array.length()).mapNotNull { array.optJSONObject(it) }
-                                        .firstOrNull { it.optString("id") != playerId && it.optBoolean("alive", true) }
+                                        .firstOrNull { it.optString("id") == selectedTargetId && it.optBoolean("alive", true) }
+                                        ?: (0 until array.length()).mapNotNull { array.optJSONObject(it) }
+                                            .firstOrNull { it.optString("id") != playerId && it.optBoolean("alive", true) }
                                 }
                                 if (target == null) {
                                     showToast("没有可攻击的目标。")
