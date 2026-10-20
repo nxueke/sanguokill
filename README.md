@@ -4,10 +4,11 @@ An original, extensible multiplayer Chinese-style card game project. The current
 
 ## Current project status
 
-- Android native starter client with a local card-play loop.
+- Android native client with a local card-play loop and an initial WebSocket online-room interface.
 - Android Debug APK GitHub Actions workflow.
 - Node.js authoritative rules core and automated tests.
-- WebSocket server protocol for room creation, joining, leaving, reconnecting, game start, and basic actions.
+- WebSocket server protocol for room creation, joining, reconnecting, host start, basic card actions, and per-player snapshots.
+- Dockerfile and Render Blueprint template for deploying the WebSocket server.
 - Per-player snapshots hide opponents' hands.
 
 ## Architecture
@@ -16,11 +17,12 @@ An original, extensible multiplayer Chinese-style card game project. The current
 - `server/engine.mjs`: core state and rule validation.
 - `server/rooms.mjs`: room lifecycle, sessions, reconnect grace period, and player-specific snapshots.
 - `server/index.mjs`: HTTP health endpoint and WebSocket protocol at `/ws`.
+- `Dockerfile`, `render.yaml`, `docs/ONLINE_SERVER.md`: hosting setup and Android connection guide.
 - `test/`: Node.js built-in test suite.
 - `.github/workflows/server-tests.yml`: server tests.
 - `.github/workflows/android-apk.yml`: builds and uploads a Debug APK.
 
-The server is authoritative: clients submit actions, never dictate game state. The WebSocket prototype still needs security hardening, deployed hosting, protocol integration in the Android client, and more complete rule handling before public multiplayer release.
+The server is authoritative: clients submit actions, never dictate game state. The Android client has an initial WebSocket room UI. A server must still be deployed and its `wss://.../ws` URL entered in the app before remote play works. The prototype still needs security hardening, robust response windows, and complete rule handling before public multiplayer release.
 
 ## Run server tests
 
@@ -73,7 +75,7 @@ This is a debug APK, not a signed Play Store release. Install only builds you tr
 - Full card catalogue and individual card effects for the base and war expansion sets.
 - Complete role-based victory rules, landlord rules, double-general selection and skill combinations.
 - Response windows, dodge resolution, dying/rescue, equipment, delayed tricks, and skill triggers.
-- Android integration with WebSocket rooms and online gameplay.
+- Deploy the server and run real-device, multi-client online tests.
 - Reconnection and security edge-case tests; deployment and persistence.
 - End-to-end device tests and a release-signed APK.
 
