@@ -77,7 +77,7 @@ class MainActivity : Activity() {
     }
 
     private fun input(hintText: String, value: String): EditText =
-        EditText(this).apply { hint = hintText; setText(value); singleLine = true }
+        EditText(this).apply { hint = hintText; setText(value); setSingleLine(true) }
 
     private fun showLobby() {
         val root = column()
