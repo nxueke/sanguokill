@@ -50,9 +50,9 @@ class MainActivity : Activity() {
     private var generalOneId = "wei_guard"
     private var generalTwoId = "shu_blade"
     private val generalOptions = listOf(
-        "wei_guard" to "魏之坚守", "shu_blade" to "蜀之猛进",
-        "wu_sage" to "吴之谋略", "healer" to "济世医者",
-        "iron_wall" to "铁壁校尉", "swift_arrow" to "追风神射"
+        "wei_guard" to "魏之坚守 · 体力上限4", "shu_blade" to "蜀之猛进 · 每回合额外一张杀",
+        "wu_sage" to "吴之谋略 · 摸牌锦囊多摸一张", "healer" to "济世医者 · 桃额外回复一点",
+        "iron_wall" to "铁壁校尉 · 首次免疫杀伤害", "swift_arrow" to "追风神射 · 杀额外一点伤害"
     )
     private var hp = 4
     private var opponentHp = 4
@@ -256,7 +256,9 @@ class MainActivity : Activity() {
                 val roleText = role?.let { " · 身份 ${roleLabel(it)}" } ?: ""
                 val generals = p.optJSONArray("generals")
                 val generalText = if (generals != null && generals.length() > 0) " · 武将 " + (0 until generals.length()).map { generals.optString(it) }.joinToString("、") else ""
-                playerLines.add(p.optString("name") + hostMark + " · 体力 " + p.optInt("hp", 4) + "/" + p.optInt("maxHp", 4) + " · 手牌 " + p.optInt("handCount") + " · " + connection + armor + roleText + generalText)
+                val skills = p.optJSONArray("generalSkills")
+                val skillText = if (skills != null && skills.length() > 0) " · 技能 " + (0 until skills.length()).map { skills.optString(it) }.joinToString("；") else ""
+                playerLines.add(p.optString("name") + hostMark + " · 体力 " + p.optInt("hp", 4) + "/" + p.optInt("maxHp", 4) + " · 手牌 " + p.optInt("handCount") + " · " + connection + armor + roleText + generalText + skillText)
             }
         }
         root.addView(text(playerLines.joinToString("\n").ifBlank { "等待玩家加入……" }, 15f))
