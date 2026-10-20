@@ -128,3 +128,15 @@ test('landlord bidding waits for all players and permits rebidding after everyon
   assert.equal(room.assignedRoles[1], 'landlord');
   assert.throws(() => manager.bidLandlord(host.token, 3), /不能再更改/);
 });
+
+test('a player cannot change a landlord bid before the other players bid', () => {
+  const manager = new RoomManager();
+  const { room, player: host } = manager.create({ name: 'Host', mode: 'duel_lord', maxPlayers: 3 });
+  const second = manager.join({ code: room.code, name: 'Second' }).player;
+  manager.join({ code: room.code, name: 'Third' });
+  manager.bidLandlord(host.token, 1);
+  assert.throws(() => manager.bidLandlord(host.token, 3), /已经叫过分/);
+  assert.equal(room.bids[host.id], 1);
+  manager.bidLandlord(second.token, 2);
+  assert.equal(room.assignedRoles, null);
+});
