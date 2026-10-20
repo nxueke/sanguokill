@@ -57,7 +57,7 @@ export class RoomManager {
     if (!session) return null;
     const room = this.rooms.get(session.roomCode);
     if (!room) { this.sessions.delete(token); return null; }
-    if (room.status === 'playing') throw new Error('对局进行中，暂不支持主动离开；可断开连接后重连');
+    if (room.status === 'playing' && room.game?.status !== 'finished') throw new Error('对局进行中，暂不支持主动离开；可断开连接后重连');
     this.sessions.delete(token);
     const index = room.players.findIndex(p => p.id === session.playerId);
     if (index >= 0) {
@@ -104,7 +104,7 @@ export class RoomManager {
 
   act(token, action) {
     const { room, player } = this.#session(token);
-    if (room.status !== 'playing' || !room.game) throw new Error('对局尚未开始');
+    if (room.status !== 'playing' || !room.game || room.game.status !== 'playing') throw new Error('对局尚未开始或已经结束');
     const game = room.game;
 
     if (game.pendingResponse) {
@@ -201,7 +201,7 @@ export class RoomManager {
   snapshot(room, viewerId) {
     const game = room.game;
     return {
-      code: room.code, mode: room.mode, status: room.status, maxPlayers: room.maxPlayers,
+      code: room.code, mode: room.mode, status: game?.status === 'finished' ? 'finished' : room.status, maxPlayers: room.maxPlayers,
       hostId: room.hostId,
       players: room.players.map(p => {
         const gp = game?.players.find(x => x.id === p.id);
