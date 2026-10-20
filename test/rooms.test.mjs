@@ -84,3 +84,22 @@ test('double-general mode requires two distinct selections from every player', (
   assert.equal(room.game.players[0].maxHp, 3);
   assert.equal(room.game.players[1].maxHp, 3);
 });
+
+test('only landlord selects two generals in landlord mode', () => {
+  const manager = new RoomManager();
+  const { room, player: host } = manager.create({ name: 'Host', mode: 'duel_lord', maxPlayers: 3 });
+  manager.join({ code: room.code, name: 'Second' });
+  manager.join({ code: room.code, name: 'Third' });
+  const landlordIndex = room.assignedRoles.indexOf('landlord');
+  const landlord = room.players[landlordIndex];
+  const peasant = room.players[room.assignedRoles.indexOf('peasant')];
+  assert.throws(() => manager.selectGenerals(peasant.token, ['wei_guard', 'wu_sage']), /只有地主/);
+  assert.throws(() => manager.start(host.token), /地主必须先选择/);
+  manager.selectGenerals(landlord.token, ['wei_guard', 'wu_sage']);
+  manager.start(host.token);
+  const landlordState = room.game.players.find(p => p.id === landlord.id);
+  const peasantState = room.game.players.find(p => p.id === peasant.id);
+  assert.deepEqual(landlordState.generals, ['魏之坚守', '吴之谋略']);
+  assert.equal(peasantState.generals.length, 0);
+  assert.equal(landlordState.maxHp, 3);
+});
