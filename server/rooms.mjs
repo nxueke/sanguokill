@@ -166,8 +166,8 @@ export class RoomManager {
       const heldCard = playerCard(game, player.id, action.cardId);
       if (heldCard.kind === 'dodge') throw new Error('【闪】只能在受到【杀】时响应');
       if (heldCard.kind === 'attack' && game.attacksUsedThisTurn) throw new Error('本回合已经使用过【杀】');
-      if (heldCard.kind === 'attack' && !action.targetId) throw new Error('使用【杀】必须选择目标');
-      if (heldCard.kind !== 'attack' && action.targetId) throw new Error('该牌不能指定目标');
+      if (['attack', 'steal'].includes(heldCard.kind) && !action.targetId) throw new Error(heldCard.kind === 'attack' ? '使用【杀】必须选择目标' : '使用【顺手牵羊】必须选择目标');
+      if (!['attack', 'steal'].includes(heldCard.kind) && action.targetId) throw new Error('该牌不能指定目标');
       const played = playCard(game, { playerId: player.id, cardId: action.cardId, targetId: action.targetId ?? null });
       const card = played.card;
       if (card.kind === 'attack') {
@@ -179,6 +179,18 @@ export class RoomManager {
         const target = game.players.find(p => p.id === player.id);
         target.hp = Math.min(target.hp + 1, target.maxHp);
         game.log.push({ type: 'healed', playerId: player.id, hp: target.hp });
+      }
+      if (card.kind === 'draw2') drawCards(game, player.id, 2);
+      if (card.kind === 'steal') {
+        const target = game.players.find(p => p.id === played.targetId);
+        if (target?.hand.length) {
+          const stolenIndex = Math.floor(Math.random() * target.hand.length);
+          const [stolen] = target.hand.splice(stolenIndex, 1);
+          player.hand.push(stolen);
+          game.log.push({ type: 'card_stolen', playerId: player.id, targetId: target.id, cardId: stolen.id });
+        } else {
+          game.log.push({ type: 'steal_empty', playerId: player.id, targetId: played.targetId });
+        }
       }
       return room;
     }
@@ -248,9 +260,10 @@ function playerCard(game, playerId, cardId) {
 function makeStarterDeck() {
   const deck = [];
   let id = 1;
-  for (let i = 0; i < 60; i++) {
-    const kind = i % 5 === 0 ? 'heal' : i % 2 === 0 ? 'attack' : 'dodge';
-    const name = kind === 'heal' ? '桃' : kind === 'attack' ? '杀' : '闪';
+  const kinds = ['heal', 'dodge', 'attack', 'dodge', 'attack', 'draw2', 'steal', 'heal'];
+  for (let i = 0; i < 80; i++) {
+    const kind = kinds[i % kinds.length];
+    const name = kind === 'heal' ? '桃' : kind === 'attack' ? '杀' : kind === 'dodge' ? '闪' : kind === 'draw2' ? '摸二张' : '顺手牵羊';
     deck.push({ id: 'c' + id++, name, kind });
   }
   return deck;
