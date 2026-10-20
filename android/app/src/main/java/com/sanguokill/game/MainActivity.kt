@@ -250,7 +250,8 @@ class MainActivity : Activity() {
         }
         if (state.optString("status") == "finished") {
             root.addView(text("对局结束 · 胜利阵营：${sideLabel(state.optString("winningSide"))}", 18f, true))
-        }\n        val pending = state.optJSONObject("pendingResponse")
+        }
+        val pending = state.optJSONObject("pendingResponse")
         if (pending != null) {
             val responseType = pending.optString("type")
             val responsePlayer = pending.optString("responsePlayerId")
@@ -344,7 +345,9 @@ class MainActivity : Activity() {
         "rebels" -> "反贼阵营"
         "renegade" -> "内奸"
         else -> "尚未判定"
-    }\n\n    private fun kindLabel(kind: String): String = when (kind) {
+    }
+
+    private fun kindLabel(kind: String): String = when (kind) {
         "attack" -> "攻击"
         "heal" -> "回复"
         "dodge" -> "闪避"
