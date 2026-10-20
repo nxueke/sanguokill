@@ -63,7 +63,7 @@ test('a player can use at most one attack per turn', () => {
   manager.act(guest.token, { type: 'respond', response: 'pass' });
   assert.throws(
     () => manager.act(host.token, { type: 'play_card', cardId: 'extra-attack', targetId: guest.id }),
-    /本回合已经使用过/
+    /本回合已经用完【杀】次数/
   );
   manager.act(host.token, { type: 'end_turn' });
   manager.act(guest.token, { type: 'end_turn' });
@@ -153,4 +153,36 @@ test('armor equips into a slot and blocks one incoming attack', () => {
   manager.act(host.token, { type: 'respond', response: 'pass' });
   assert.equal(hostState.hp, 4);
   assert.equal(hostState.armor, null);
+});
+
+test('Shu dual general permits a second attack but not a third', () => {
+  const { manager, room, host, guest } = startedRoom();
+  const hostState = room.game.players.find(p => p.id === host.id);
+  hostState.generalIds = ['shu_blade'];
+  hostState.hand.push(
+    { id: 'extra-attack-1', name: '杀', kind: 'attack' },
+    { id: 'extra-attack-2', name: '杀', kind: 'attack' }
+  );
+  manager.act(host.token, { type: 'play_card', cardId: 'c3', targetId: guest.id });
+  manager.act(guest.token, { type: 'respond', response: 'pass' });
+  manager.act(host.token, { type: 'play_card', cardId: 'extra-attack-1', targetId: guest.id });
+  manager.act(guest.token, { type: 'respond', response: 'pass' });
+  assert.throws(() => manager.act(host.token, { type: 'play_card', cardId: 'extra-attack-2', targetId: guest.id }), /已经用完【杀】次数/);
+  assert.equal(room.game.players.find(p => p.id === guest.id).hp, 2);
+});
+
+test('Healer general increases Peach healing and Iron Wall blocks one attack', () => {
+  const { manager, room, host, guest } = startedRoom();
+  const hostState = room.game.players.find(p => p.id === host.id);
+  const guestState = room.game.players.find(p => p.id === guest.id);
+  hostState.generalIds = ['healer'];
+  hostState.hp = 2;
+  hostState.hand.push({ id: 'healer-peach', name: '桃', kind: 'heal' });
+  manager.act(host.token, { type: 'play_card', cardId: 'healer-peach' });
+  assert.equal(hostState.hp, 4);
+  guestState.generalIds = ['iron_wall'];
+  manager.act(host.token, { type: 'play_card', cardId: 'c3', targetId: guest.id });
+  manager.act(guest.token, { type: 'respond', response: 'pass' });
+  assert.equal(guestState.hp, 4);
+  assert.equal(guestState.marks.ironWallUsed, true);
 });
