@@ -52,14 +52,14 @@ test('turn advancement skips eliminated players', () => {
 
 test('identity role distribution is valid for 3 through 10 players', () => {
   const expected = {
-    3: { lord: 1, loyalist: 0, rebel: 1, renegade: 1 },
-    4: { lord: 1, loyalist: 1, rebel: 2, renegade: 0 },
-    5: { lord: 1, loyalist: 1, rebel: 2, renegade: 1 },
-    6: { lord: 1, loyalist: 2, rebel: 2, renegade: 1 },
-    7: { lord: 1, loyalist: 2, rebel: 3, renegade: 1 },
-    8: { lord: 1, loyalist: 2, rebel: 4, renegade: 1 },
-    9: { lord: 1, loyalist: 3, rebel: 4, renegade: 1 },
-    10: { lord: 1, loyalist: 3, rebel: 5, renegade: 1 },
+    3: { lord: 1, loyalist: 0, rebel: 1, renegade: 1, landlord: 0, peasant: 0 },
+    4: { lord: 1, loyalist: 1, rebel: 2, renegade: 0, landlord: 0, peasant: 0 },
+    5: { lord: 1, loyalist: 1, rebel: 2, renegade: 1, landlord: 0, peasant: 0 },
+    6: { lord: 1, loyalist: 2, rebel: 2, renegade: 1, landlord: 0, peasant: 0 },
+    7: { lord: 1, loyalist: 2, rebel: 3, renegade: 1, landlord: 0, peasant: 0 },
+    8: { lord: 1, loyalist: 2, rebel: 4, renegade: 1, landlord: 0, peasant: 0 },
+    9: { lord: 1, loyalist: 3, rebel: 4, renegade: 1, landlord: 0, peasant: 0 },
+    10: { lord: 1, loyalist: 3, rebel: 5, renegade: 1, landlord: 0, peasant: 0 },
   };
   for (let n = 3; n <= 10; n++) {
     const roles = assignIdentityRoles(n, () => 0.5);
