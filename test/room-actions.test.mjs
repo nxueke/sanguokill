@@ -112,3 +112,12 @@ test('a player dies only after all rescue seats pass', () => {
   assert.equal(target.alive, false);
   assert.equal(room.game.pendingResponse, null);
 });
+
+test('landlord room requires exactly three players and assigns hidden roles', () => {
+  const manager = new RoomManager();
+  const { room, player: host } = manager.create({ name: 'Host', mode: 'duel_lord', maxPlayers: 4 });
+  manager.join({ code: room.code, name: 'Second' });
+  manager.join({ code: room.code, name: 'Third' });
+  manager.join({ code: room.code, name: 'Fourth' });
+  assert.throws(() => manager.start(host.token), /正好 3 名玩家/);
+});
