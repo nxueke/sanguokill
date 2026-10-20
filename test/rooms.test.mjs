@@ -81,6 +81,8 @@ test('double-general mode requires two distinct selections from every player', (
   manager.start(host.token);
   assert.equal(room.game.players[0].generals.length, 2);
   assert.deepEqual(room.game.players[0].generals, ['魏之坚守', '吴之谋略']);
+  assert.deepEqual(room.game.players[0].generalIds, ['wei_guard', 'wu_sage']);
+  assert.equal(room.game.players[0].generalSkills.length, 2);
   assert.equal(room.game.players[0].maxHp, 3);
   assert.equal(room.game.players[1].maxHp, 3);
 });
