@@ -18,6 +18,7 @@ import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import org.json.JSONObject
+import org.json.JSONArray
 import java.util.concurrent.TimeUnit
 
 private data class GameCard(val id: Int, val name: String, val description: String)
@@ -46,6 +47,13 @@ class MainActivity : Activity() {
     private var roomCodeValue = ""
     private var maxPlayersValue = "3"
     private var modeValue = "standard"
+    private var generalOneId = "wei_guard"
+    private var generalTwoId = "shu_blade"
+    private val generalOptions = listOf(
+        "wei_guard" to "魏之坚守", "shu_blade" to "蜀之猛进",
+        "wu_sage" to "吴之谋略", "healer" to "济世医者",
+        "iron_wall" to "铁壁校尉", "swift_arrow" to "追风神射"
+    )
     private var hp = 4
     private var opponentHp = 4
     private var turn = 1
@@ -264,6 +272,32 @@ class MainActivity : Activity() {
             clipboard.setPrimaryClip(android.content.ClipData.newPlainText("房间码", state.optString("code")))
             showToast("房间码已复制。")
         })
+        if (state.optString("status") == "waiting" && state.optString("mode") == "double_general") {
+            root.addView(text("双将选择：选择两名不同武将后保存；每位玩家都需要完成选择。", 14f))
+            val labels = generalOptions.map { it.second }
+            val firstSpinner = Spinner(this)
+            firstSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, labels)
+            firstSpinner.setSelection(generalOptions.indexOfFirst { it.first == generalOneId }.coerceAtLeast(0))
+            root.addView(text("第一名武将", 14f))
+            root.addView(firstSpinner)
+            val secondSpinner = Spinner(this)
+            secondSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, labels)
+            secondSpinner.setSelection(generalOptions.indexOfFirst { it.first == generalTwoId }.coerceAtLeast(1))
+            root.addView(text("第二名武将", 14f))
+            root.addView(secondSpinner)
+            root.addView(button("保存双将选择") {
+                val first = generalOptions[firstSpinner.selectedItemPosition].first
+                val second = generalOptions[secondSpinner.selectedItemPosition].first
+                if (first == second) {
+                    showToast("请选择两名不同的武将。")
+                } else {
+                    generalOneId = first
+                    generalTwoId = second
+                    sendOnlineMessage(JSONObject().put("type", "select_generals")
+                        .put("generals", JSONArray().put(first).put(second)))
+                }
+            })
+        }
         if (state.optString("status") == "waiting" && state.optString("hostId") == playerId) {
             root.addView(button("开始游戏（至少 3 名玩家）") {
                 sendOnlineMessage(JSONObject().put("type", "start_game"))
