@@ -22,7 +22,7 @@ An original, extensible multiplayer Chinese-style card game project. The current
 - `.github/workflows/server-tests.yml`: server tests.
 - `.github/workflows/android-apk.yml`: builds and uploads a Debug APK.
 
-The server is authoritative: clients submit actions, never dictate game state. The Android client has an initial WebSocket room UI. A server must still be deployed and its `wss://.../ws` URL entered in the app before remote play works. The prototype still needs security hardening, response timeouts, full rule handling, and deployment before public multiplayer release.
+The server is authoritative: clients submit actions, never dictate game state. The Android client has an initial WebSocket room UI. A server must still be deployed and its `wss://.../ws` URL entered in the app before remote play works. The prototype still needs deeper security hardening, full rule handling, and deployment before public multiplayer release. Dodge and rescue response windows auto-pass after 30 seconds by default (configurable with RESPONSE_TIMEOUT_MS).
 
 ## Run server tests
 
@@ -74,7 +74,7 @@ This is a debug APK, not a signed Play Store release. Install only builds you tr
 
 - Full original card catalogue and individual card effects for the base and war expansion sets; current starter deck contains only a small prototype subset.
 - Full official role edge cases, official landlord rules beyond the prototype bidding flow, and full card rules; the current original dual-general skills are a prototype and need balance/testing.
-- Response timeouts, equipment, delayed tricks, and skill triggers; current response/rescue rules are an initial implementation, not a full official rules engine.
+- Equipment beyond one-hit armor, delayed tricks, and more skill triggers; current response/rescue rules are an initial implementation, not a full official rules engine.
 - Deploy the server and run real-device, multi-client online tests.
 - Reconnection and security edge-case tests; deployment and persistence.
 - End-to-end device tests and a release-signed APK.
