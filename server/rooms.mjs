@@ -96,6 +96,7 @@ export class RoomManager {
     startGame(state, { roles: room.mode === GAME_MODES.STANDARD ? assignIdentityRoles(room.players.length) : [] });
     state.players.forEach(p => drawCards(state, p.id, 4));
     state.drawnThisTurn = false;
+    state.attacksUsedThisTurn = false;
     room.game = state;
     room.status = 'playing';
     return room;
@@ -109,11 +110,15 @@ export class RoomManager {
       if (current?.id !== player.id) throw new Error('还没轮到你');
       const heldCard = playerCard(room.game, player.id, action.cardId);
       if (heldCard.kind === 'dodge') throw new Error('【闪】只能在受到【杀】时响应，暂不能主动打出');
+      if (heldCard.kind === 'attack' && room.game.attacksUsedThisTurn) throw new Error('本回合已经使用过【杀】');
       if (heldCard.kind === 'attack' && !action.targetId) throw new Error('使用【杀】必须选择目标');
       if (heldCard.kind !== 'attack' && action.targetId) throw new Error('该牌不能指定目标');
       const played = playCard(room.game, { playerId: player.id, cardId: action.cardId, targetId: action.targetId ?? null });
       const card = played.card;
-      if (card.kind === 'attack') applyDamage(room.game, { sourceId: player.id, targetId: played.targetId, amount: 1 });
+      if (card.kind === 'attack') {
+        room.game.attacksUsedThisTurn = true;
+        applyDamage(room.game, { sourceId: player.id, targetId: played.targetId, amount: 1 });
+      }
       if (card.kind === 'heal') {
         const target = room.game.players.find(p => p.id === player.id);
         target.hp = Math.min(target.hp + 1, target.maxHp);
@@ -132,6 +137,7 @@ export class RoomManager {
       if (room.game.players[room.game.currentPlayerIndex]?.id !== player.id) throw new Error('还没轮到你');
       advanceTurn(room.game);
       room.game.drawnThisTurn = false;
+      room.game.attacksUsedThisTurn = false;
       return room;
     }
     throw new Error('未知操作类型');
