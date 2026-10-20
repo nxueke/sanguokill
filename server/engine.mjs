@@ -1,6 +1,6 @@
 /** Minimal authoritative rules core. All mutations must run on the server. */
 export const GAME_MODES = Object.freeze({ STANDARD: 'standard', DUEL_LORD: 'duel_lord', DOUBLE_GENERAL: 'double_general' });
-export const IDENTITY_ROLES = Object.freeze({ LORD: 'lord', LOYALIST: 'loyalist', REBEL: 'rebel', RENEGADE: 'renegade' });
+export const IDENTITY_ROLES = Object.freeze({ LORD: 'lord', LOYALIST: 'loyalist', REBEL: 'rebel', RENEGADE: 'renegade', LANDLORD: 'landlord', PEASANT: 'peasant' });
 
 /** Standard identity-role counts for 3–10 players. The lord is always first. */
 export function assignIdentityRoles(playerCount, random = Math.random) {
@@ -27,6 +27,19 @@ export function assignIdentityRoles(playerCount, random = Math.random) {
   // Keep the lord in seat 1; shuffle all other roles for replayability.
   for (let i = roles.length - 1; i > 1; i--) {
     const j = 1 + Math.floor(Math.max(0, Math.min(0.999999999, random())) * i);
+    [roles[i], roles[j]] = [roles[j], roles[i]];
+  }
+  return roles;
+}
+
+
+/** Three-player landlord mode: one landlord versus two peasants. */
+export function assignDuelLordRoles(playerCount, random = Math.random) {
+  if (playerCount !== 3) throw new RangeError('duel_lord mode requires exactly 3 players');
+  if (typeof random !== 'function') throw new TypeError('random must be a function');
+  const roles = [IDENTITY_ROLES.LANDLORD, IDENTITY_ROLES.PEASANT, IDENTITY_ROLES.PEASANT];
+  for (let i = roles.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.max(0, Math.min(0.999999999, random())) * (i + 1));
     [roles[i], roles[j]] = [roles[j], roles[i]];
   }
   return roles;
@@ -143,7 +156,22 @@ export function advanceTurn(state) {
 
 export function evaluateVictory(state) {
   const alive = state.players.filter(p => p.alive);
-  const validRoles = new Set(Object.values(IDENTITY_ROLES));
+  const hasDuelLordRoles = state.players.every(p => [IDENTITY_ROLES.LANDLORD, IDENTITY_ROLES.PEASANT].includes(p.role));
+  if (hasDuelLordRoles) {
+    const landlordAlive = alive.some(p => p.role === IDENTITY_ROLES.LANDLORD);
+    const peasantsAlive = alive.some(p => p.role === IDENTITY_ROLES.PEASANT);
+    const side = !landlordAlive ? 'peasants' : !peasantsAlive ? 'landlord' : null;
+    if (side) {
+      state.status = 'finished';
+      state.turnPhase = 'finished';
+      state.winningSide = side;
+      state.winner = side === 'landlord' ? alive.find(p => p.role === IDENTITY_ROLES.LANDLORD)?.id : null;
+      state.log.push({ type: 'game_finished', winner: state.winner, winningSide: side });
+      return state.winner;
+    }
+    return null;
+  }
+  const validRoles = new Set([IDENTITY_ROLES.LORD, IDENTITY_ROLES.LOYALIST, IDENTITY_ROLES.REBEL, IDENTITY_ROLES.RENEGADE]);
   const hasIdentityRoles = state.players.every(p => validRoles.has(p.role));
   if (hasIdentityRoles) {
     const lordAlive = alive.some(p => p.role === IDENTITY_ROLES.LORD);
