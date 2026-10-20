@@ -93,7 +93,7 @@ export function playCard(state, { playerId, cardId, targetId = null }) {
   return { card, targetId };
 }
 
-export function applyDamage(state, { sourceId = null, targetId, amount = 1 }) {
+export function applyDamage(state, { sourceId = null, targetId, amount = 1, deferDying = false }) {
   assertPlaying(state);
   if (!Number.isInteger(amount) || amount < 1 || amount > 10) throw new RangeError('Invalid damage amount');
   const target = requirePlayer(state, targetId);
@@ -101,9 +101,14 @@ export function applyDamage(state, { sourceId = null, targetId, amount = 1 }) {
   target.hp -= amount;
   state.log.push({ type: 'damage', sourceId, targetId, amount, hp: target.hp });
   if (target.hp <= 0) {
-    target.alive = false;
-    state.log.push({ type: 'player_died', playerId: targetId });
-    evaluateVictory(state);
+    if (deferDying) {
+      state.dyingPlayerId = targetId;
+      state.log.push({ type: 'player_dying', playerId: targetId });
+    } else {
+      target.alive = false;
+      state.log.push({ type: 'player_died', playerId: targetId });
+      evaluateVictory(state);
+    }
   }
   return target.hp;
 }
