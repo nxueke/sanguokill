@@ -250,7 +250,30 @@ class MainActivity : Activity() {
         }
         if (state.optString("status") == "finished") {
             root.addView(text("对局结束 · 胜利阵营：${sideLabel(state.optString("winningSide"))}", 18f, true))
-        }\n        if (state.optString("status") == "playing") {
+        }\n        val pending = state.optJSONObject("pendingResponse")
+        if (pending != null) {
+            val responseType = pending.optString("type")
+            val responsePlayer = pending.optString("responsePlayerId")
+            val targetName = players?.let { array ->
+                (0 until array.length()).mapNotNull { array.optJSONObject(it) }
+                    .firstOrNull { it.optString("id") == pending.optString("targetId") }?.optString("name")
+            } ?: "玩家"
+            val message = if (responseType == "dodge") "【杀】目标 $targetName 需要打出【闪】或放弃响应。"
+                else "玩家 $targetName 濒死，当前等待救援玩家。"
+            root.addView(text(message, 16f, true))
+            if (responsePlayer == playerId) {
+                root.addView(button(if (responseType == "dodge") "不出【闪】" else "放弃救援") {
+                    val action = if (responseType == "dodge")
+                        JSONObject().put("type", "respond").put("response", "pass")
+                    else JSONObject().put("type", "rescue").put("response", "pass")
+                    sendOnlineMessage(JSONObject().put("type", "action").put("action", action))
+                })
+                root.addView(text(if (responseType == "dodge") "点击手牌中的【闪】进行响应。" else "点击手牌中的【桃】救援。", 14f))
+            } else {
+                root.addView(text("正在等待其他玩家响应，暂时不能操作。", 14f))
+            }
+        }
+        if (state.optString("status") == "playing") {
             root.addView(text("当前行动玩家：" + state.optString("currentPlayerId") + "    回合：" + state.optInt("turnNumber"), 15f, true))
             root.addView(button("摸一张牌") {
                 sendOnlineMessage(JSONObject().put("type", "action").put("action", JSONObject().put("type", "draw")))
@@ -270,8 +293,16 @@ class MainActivity : Activity() {
                     val cardName = card.optString("name")
                     val kind = card.optString("kind")
                     root.addView(button("【$cardName】 · ${kindLabel(kind)}") {
-                        if (kind == "dodge") {
-                            showToast("【闪】当前服务端尚未实现响应窗口。")
+                        val pendingNow = latestRoomState?.optJSONObject("pendingResponse")
+                        val isExpectedResponder = pendingNow?.optString("responsePlayerId") == playerId
+                        if (kind == "dodge" && pendingNow?.optString("type") == "dodge" && isExpectedResponder) {
+                            sendOnlineMessage(JSONObject().put("type", "action").put("action",
+                                JSONObject().put("type", "respond").put("response", "dodge").put("cardId", cardId)))
+                        } else if (kind == "heal" && pendingNow?.optString("type") == "rescue" && isExpectedResponder) {
+                            sendOnlineMessage(JSONObject().put("type", "action").put("action",
+                                JSONObject().put("type", "rescue").put("response", "save").put("cardId", cardId)))
+                        } else if (kind == "dodge") {
+                            showToast("【闪】只能在受到【杀】时响应。")
                         } else {
                             val action = JSONObject().put("type", "play_card").put("cardId", cardId)
                             if (kind == "attack") {
