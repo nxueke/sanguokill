@@ -27,7 +27,7 @@ test('draws only available cards and rejects invalid requests', () => {
 test('card play validates turn ownership and hand membership', () => {
   const game = createGameState({ playerCount: 3 });
   startGame(game, { hands: [[{ id: 'sha' }], [], []] });
-  assert.throws(() => playCard(game, { playerId: 'p2', cardId: 'sha' }), /not this player/);
+  assert.throws(() => playCard(game, { playerId: 'p2', cardId: 'sha' }), /Not this player/);
   assert.throws(() => playCard(game, { playerId: 'p1', cardId: 'unknown' }), /not in player hand/);
   playCard(game, { playerId: 'p1', cardId: 'sha', targetId: 'p2' });
   assert.equal(game.players[0].hand.length, 0);
