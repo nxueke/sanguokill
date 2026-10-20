@@ -63,6 +63,7 @@ test('a player can use at most one attack per turn', () => {
   );
   manager.act(host.token, { type: 'end_turn' });
   manager.act(guest.token, { type: 'end_turn' });
+  manager.act(room.players[2].token, { type: 'end_turn' });
   manager.act(host.token, { type: 'play_card', cardId: 'extra-attack', targetId: guest.id });
   assert.equal(room.game.players.find(p => p.id === guest.id).hp, 2);
 });
