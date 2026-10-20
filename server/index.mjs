@@ -81,7 +81,7 @@ wss.on('connection', socket => {
   });
   socket.on('close', () => {
     if (token) {
-      const room = manager.disconnect(token);
+      const room = manager.disconnect(token, socket);
       if (room) broadcast(room);
     }
   });
