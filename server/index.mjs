@@ -79,6 +79,11 @@ wss.on('connection', socket => {
         if (room) broadcast(room);
         return;
       }
+      if (message.type === 'bid_landlord') {
+        const room = manager.bidLandlord(token, message.bid);
+        broadcast(room);
+        return;
+      }
       if (message.type === 'select_generals') {
         const room = manager.selectGenerals(token, message.generals);
         broadcast(room);
