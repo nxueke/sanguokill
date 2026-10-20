@@ -254,7 +254,9 @@ class MainActivity : Activity() {
                 val armor = p.optString("armor").takeIf { it.isNotBlank() && it != "null" }?.let { " · 装备 $it" } ?: ""
                 val role = p.optString("role").takeIf { it.isNotBlank() && it != "null" }
                 val roleText = role?.let { " · 身份 ${roleLabel(it)}" } ?: ""
-                playerLines.add("${p.optString("name")}$hostMark · 体力 ${p.optInt("hp", 4)} · 手牌 ${p.optInt("handCount")} · $connection$armor$roleText")
+                val generals = p.optJSONArray("generals")
+                val generalText = if (generals != null && generals.length() > 0) " · 武将 " + (0 until generals.length()).map { generals.optString(it) }.joinToString("、") else ""
+                playerLines.add(p.optString("name") + hostMark + " · 体力 " + p.optInt("hp", 4) + "/" + p.optInt("maxHp", 4) + " · 手牌 " + p.optInt("handCount") + " · " + connection + armor + roleText + generalText)
             }
         }
         root.addView(text(playerLines.joinToString("\n").ifBlank { "等待玩家加入……" }, 15f))
