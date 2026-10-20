@@ -202,7 +202,7 @@ export class RoomManager {
           const stolenIndex = Math.floor(Math.random() * target.hand.length);
           const [stolen] = target.hand.splice(stolenIndex, 1);
           game.players.find(p => p.id === player.id).hand.push(stolen);
-          game.log.push({ type: 'card_stolen', playerId: player.id, targetId: target.id, cardId: stolen.id });
+          game.log.push({ type: 'card_stolen', playerId: player.id, targetId: target.id });
         } else {
           game.log.push({ type: 'steal_empty', playerId: player.id, targetId: played.targetId });
         }
