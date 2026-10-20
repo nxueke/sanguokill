@@ -93,3 +93,13 @@ test('identity game continues when only lord and renegade remain', () => {
   assert.equal(game.status, 'finished');
   assert.equal(game.winningSide, 'renegade');
 });
+
+test('drawing reshuffles discarded cards when the deck runs out', () => {
+  const game = createGameState({ playerCount: 3, deck: [{ id: 'draw-1' }] });
+  startGame(game);
+  game.discard.push({ id: 'discard-1' }, { id: 'discard-2' });
+  const drawn = drawCards(game, 'p1', 3);
+  assert.equal(drawn.length, 3);
+  assert.deepEqual(new Set(drawn.map(card => card.id)), new Set(['draw-1', 'discard-1', 'discard-2']));
+  assert.equal(game.discard.length, 0);
+});
