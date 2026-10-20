@@ -67,3 +67,20 @@ test('finished game snapshots expose the finished status', () => {
   assert.equal(manager.snapshot(room, player.id).status, 'finished');
   assert.equal(manager.leave(player.token), room);
 });
+
+test('double-general mode requires two distinct selections from every player', () => {
+  const manager = new RoomManager();
+  const { room, player: host } = manager.create({ name: 'Host', mode: 'double_general', maxPlayers: 3 });
+  const guest = manager.join({ code: room.code, name: 'Guest' }).player;
+  const third = manager.join({ code: room.code, name: 'Third' }).player;
+  assert.throws(() => manager.start(host.token), /先选择两名武将/);
+  assert.throws(() => manager.selectGenerals(host.token, ['wei_guard', 'wei_guard']), /两名不同/);
+  manager.selectGenerals(host.token, ['wei_guard', 'wu_sage']);
+  manager.selectGenerals(guest.token, ['healer', 'iron_wall']);
+  manager.selectGenerals(third.token, ['shu_blade', 'swift_arrow']);
+  manager.start(host.token);
+  assert.equal(room.game.players[0].generals.length, 2);
+  assert.deepEqual(room.game.players[0].generals, ['魏之坚守', '吴之谋略']);
+  assert.equal(room.game.players[0].maxHp, 3);
+  assert.equal(room.game.players[1].maxHp, 3);
+});
