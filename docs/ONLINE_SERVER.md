@@ -12,7 +12,7 @@ The Android client now contains a WebSocket room UI, but it cannot connect to ot
 
 Replace `YOUR-SERVICE` with the real service hostname assigned by the hosting provider. Do not use the example hostname literally.
 
-Free hosting plans may sleep when idle and can have cold-start delays. Do not use an unprotected development server for sensitive data.
+The server auto-passes unanswered dodge/rescue windows after 30 seconds by default; set `RESPONSE_TIMEOUT_MS` to change this (minimum 5 seconds). Free hosting plans may sleep when idle and can have cold-start delays. Do not use an unprotected development server for sensitive data.
 
 ## Local server
 
@@ -27,4 +27,4 @@ The server listens on port 3000 by default. The Android emulator can usually rea
 
 ## Current limitations
 
-This is a prototype. It has basic identity victory checks, a three-player landlord role variant, attack/dodge response, Peach rescue, draw-two and steal cards, and one-hit armor. It does not yet implement the full official card catalogue, complete official landlord rules beyond the prototype bidding flow, response timeouts, persistent rooms, rate limiting, or comprehensive abuse protection.
+This is a prototype. It has basic identity victory checks, a three-player landlord role variant, attack/dodge response, Peach rescue, draw-two and steal cards, and one-hit armor. It does not yet implement the full official card catalogue, complete official landlord rules beyond the prototype bidding flow, persistent rooms, rate limiting beyond per-socket message throttling, or comprehensive abuse protection.
