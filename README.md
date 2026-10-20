@@ -73,7 +73,7 @@ This is a debug APK, not a signed Play Store release. Install only builds you tr
 ## Remaining work
 
 - Full original card catalogue and individual card effects for the base and war expansion sets; current starter deck contains only a small prototype subset.
-- Full official role edge cases, landlord bidding and full card rules; the current original dual-general skills are a prototype and need balance/testing.
+- Full official role edge cases, official landlord rules beyond the prototype bidding flow, and full card rules; the current original dual-general skills are a prototype and need balance/testing.
 - Response timeouts, equipment, delayed tricks, and skill triggers; current response/rescue rules are an initial implementation, not a full official rules engine.
 - Deploy the server and run real-device, multi-client online tests.
 - Reconnection and security edge-case tests; deployment and persistence.
