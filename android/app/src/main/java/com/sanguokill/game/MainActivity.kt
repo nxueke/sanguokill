@@ -232,7 +232,9 @@ class MainActivity : Activity() {
                 val p = players.optJSONObject(i) ?: continue
                 val hostMark = if (p.optBoolean("host")) "（房主）" else ""
                 val connection = if (p.optBoolean("connected")) "在线" else "断线"
-                val role = p.optString("role").takeIf { it.isNotBlank() && it != "null" }\n                val roleText = role?.let { " · 身份 ${roleLabel(it)}" } ?: ""\n                playerLines.add("${p.optString("name")}$hostMark · 体力 ${p.optInt("hp", 4)} · 手牌 ${p.optInt("handCount")} · $connection$roleText")
+                val role = p.optString("role").takeIf { it.isNotBlank() && it != "null" }
+                val roleText = role?.let { " · 身份 ${roleLabel(it)}" } ?: ""
+                playerLines.add("${p.optString("name")}$hostMark · 体力 ${p.optInt("hp", 4)} · 手牌 ${p.optInt("handCount")} · $connection$roleText")
             }
         }
         root.addView(text(playerLines.joinToString("\n").ifBlank { "等待玩家加入……" }, 15f))
@@ -246,7 +248,9 @@ class MainActivity : Activity() {
                 sendOnlineMessage(JSONObject().put("type", "start_game"))
             })
         }
-        if (state.optString("status") == "finished") {\n            root.addView(text("对局结束 · 胜利阵营：${sideLabel(state.optString("winningSide"))}", 18f, true))\n        }\n        if (state.optString("status") == "playing") {
+        if (state.optString("status") == "finished") {
+            root.addView(text("对局结束 · 胜利阵营：${sideLabel(state.optString("winningSide"))}", 18f, true))
+        }\n        if (state.optString("status") == "playing") {
             root.addView(text("当前行动玩家：" + state.optString("currentPlayerId") + "    回合：" + state.optInt("turnNumber"), 15f, true))
             root.addView(button("摸一张牌") {
                 sendOnlineMessage(JSONObject().put("type", "action").put("action", JSONObject().put("type", "draw")))
@@ -296,7 +300,20 @@ class MainActivity : Activity() {
         setContentView(ScrollView(this).apply { addView(root) })
     }
 
-    private fun roleLabel(role: String): String = when (role) {\n        "lord" -> "主公"\n        "loyalist" -> "忠臣"\n        "rebel" -> "反贼"\n        "renegade" -> "内奸"\n        else -> role\n    }\n\n    private fun sideLabel(side: String): String = when (side) {\n        "lord" -> "主公阵营"\n        "rebels" -> "反贼阵营"\n        "renegade" -> "内奸"\n        else -> "尚未判定"\n    }\n\n    private fun kindLabel(kind: String): String = when (kind) {
+    private fun roleLabel(role: String): String = when (role) {
+        "lord" -> "主公"
+        "loyalist" -> "忠臣"
+        "rebel" -> "反贼"
+        "renegade" -> "内奸"
+        else -> role
+    }
+
+    private fun sideLabel(side: String): String = when (side) {
+        "lord" -> "主公阵营"
+        "rebels" -> "反贼阵营"
+        "renegade" -> "内奸"
+        else -> "尚未判定"
+    }\n\n    private fun kindLabel(kind: String): String = when (kind) {
         "attack" -> "攻击"
         "heal" -> "回复"
         "dodge" -> "闪避"
