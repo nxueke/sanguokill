@@ -128,7 +128,7 @@ export class RoomManager {
     }
     state.players.forEach(p => drawCards(state, p.id, 4));
     state.drawnThisTurn = false;
-    state.attacksUsedThisTurn = false;
+    state.attacksUsedThisTurn = 0;
     room.game = state;
     room.status = 'playing';
     return room;
@@ -158,8 +158,13 @@ export class RoomManager {
           game.discard.push(target.armor);
           target.armor = null;
           game.log.push({ type: 'armor_blocked', targetId: pending.targetId });
+        } else if (target?.generalIds?.includes('iron_wall') && !target.marks.ironWallUsed) {
+          target.marks.ironWallUsed = true;
+          game.log.push({ type: 'general_skill', playerId: target.id, generalId: 'iron_wall', skill: 'attack_blocked' });
         } else {
-          applyDamage(game, { sourceId: pending.sourceId, targetId: pending.targetId, amount: 1, deferDying: true });
+          const source = game.players.find(p => p.id === pending.sourceId);
+          const damage = source?.generalIds?.includes('swift_arrow') ? 2 : 1;
+          applyDamage(game, { sourceId: pending.sourceId, targetId: pending.targetId, amount: damage, deferDying: true });
           if (game.dyingPlayerId) beginRescue(game, game.dyingPlayerId);
         }
         return room;
@@ -173,7 +178,8 @@ export class RoomManager {
           const card = removeResponseCard(game, player.id, action.cardId, 'heal');
           game.discard.push(card);
           if (!dying) throw new Error('濒死玩家不存在');
-          dying.hp += 1;
+          const rescuer = game.players.find(p => p.id === player.id);
+          dying.hp += rescuer?.generalIds?.includes('healer') ? 2 : 1;
           game.log.push({ type: 'rescue', rescuerId: player.id, targetId: dying.id, hp: dying.hp });
           if (dying.hp > 0) {
             dying.alive = true;
@@ -203,22 +209,25 @@ export class RoomManager {
       if (current?.id !== player.id) throw new Error('还没轮到你');
       const heldCard = playerCard(game, player.id, action.cardId);
       if (heldCard.kind === 'dodge') throw new Error('【闪】只能在受到【杀】时响应');
-      if (heldCard.kind === 'attack' && game.attacksUsedThisTurn) throw new Error('本回合已经使用过【杀】');
+      const actorState = game.players.find(p => p.id === player.id);
+      const attackLimit = actorState?.generalIds?.includes('shu_blade') ? 2 : 1;
+      if (heldCard.kind === 'attack' && (Number(game.attacksUsedThisTurn) || 0) >= attackLimit) throw new Error('本回合已经用完【杀】次数');
       if (['attack', 'steal'].includes(heldCard.kind) && !action.targetId) throw new Error(heldCard.kind === 'attack' ? '使用【杀】必须选择目标' : '使用【顺手牵羊】必须选择目标');
       if (!['attack', 'steal'].includes(heldCard.kind) && action.targetId) throw new Error('该牌不能指定目标');
       const played = playCard(game, { playerId: player.id, cardId: action.cardId, targetId: action.targetId ?? null });
       const card = played.card;
       if (card.kind === 'attack') {
-        game.attacksUsedThisTurn = true;
+        game.attacksUsedThisTurn = (Number(game.attacksUsedThisTurn) || 0) + 1;
         game.pendingResponse = { type: 'dodge', sourceId: player.id, targetId: played.targetId };
         game.log.push({ type: 'response_requested', response: 'dodge', sourceId: player.id, targetId: played.targetId });
       }
       if (card.kind === 'heal') {
         const target = game.players.find(p => p.id === player.id);
-        target.hp = Math.min(target.hp + 1, target.maxHp);
+        const healAmount = actorState?.generalIds?.includes('healer') ? 2 : 1;
+        target.hp = Math.min(target.hp + healAmount, target.maxHp);
         game.log.push({ type: 'healed', playerId: player.id, hp: target.hp });
       }
-      if (card.kind === 'draw2') drawCards(game, player.id, 2);
+      if (card.kind === 'draw2') drawCards(game, player.id, actorState?.generalIds?.includes('wu_sage') ? 3 : 2);
       if (card.kind === 'armor') {
         const owner = game.players.find(p => p.id === player.id);
         if (owner.armor) game.discard.push(owner.armor);
@@ -251,7 +260,7 @@ export class RoomManager {
       if (game.players[game.currentPlayerIndex]?.id !== player.id) throw new Error('还没轮到你');
       advanceTurn(game);
       game.drawnThisTurn = false;
-      game.attacksUsedThisTurn = false;
+      game.attacksUsedThisTurn = 0;
       return room;
     }
     throw new Error('未知操作类型');
@@ -265,7 +274,7 @@ export class RoomManager {
       players: room.players.map((p, roomIndex) => {
         const gp = game?.players.find(x => x.id === p.id);
         return { id: p.id, name: p.name, host: p.id === room.hostId, connected: p.connected,
-          hp: gp?.hp ?? 4, maxHp: gp?.maxHp ?? 4, alive: gp?.alive ?? true, armor: gp?.armor?.name ?? null, generals: gp?.generals?.length ? gp.generals : p.selectedGenerals.map(id => GENERAL_CATALOG.find(g => g.id === id)?.name ?? id), handCount: gp?.hand.length ?? 0,
+          hp: gp?.hp ?? 4, maxHp: gp?.maxHp ?? 4, alive: gp?.alive ?? true, armor: gp?.armor?.name ?? null, generals: gp?.generals?.length ? gp.generals : p.selectedGenerals.map(id => GENERAL_CATALOG.find(g => g.id === id)?.name ?? id), generalSkills: gp?.generalSkills ?? [], handCount: gp?.hand.length ?? 0,
           hand: p.id === viewerId ? (gp?.hand ?? []) : undefined, role: p.id === viewerId ? (gp?.role ?? room.assignedRoles?.[roomIndex] ?? null) : undefined };
       }),
       currentPlayerId: game?.players[game.currentPlayerIndex]?.id ?? null,
