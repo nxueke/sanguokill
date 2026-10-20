@@ -94,7 +94,12 @@ export class RoomManager {
     const allBid = room.players.every(p => Number.isInteger(room.bids[p.id]));
     if (allBid) {
       const highest = Math.max(...room.players.map(p => room.bids[p.id]));
-      if (highest > 0) {
+      if (highest === 0) {
+        // Everyone passed: clear this round so all players can bid again.
+        room.bids = {};
+        room.assignedRoles = null;
+        room.landlordBid = null;
+      } else {
         const candidates = room.players.map((p, i) => ({ p, i, bid: room.bids[p.id] })).filter(x => x.bid === highest);
         const chosen = candidates[Math.floor(Math.random() * candidates.length)].i;
         room.assignedRoles = room.players.map((_, i) => i === chosen ? 'landlord' : 'peasant');
