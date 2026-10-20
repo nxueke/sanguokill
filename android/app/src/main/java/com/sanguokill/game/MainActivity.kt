@@ -104,8 +104,13 @@ class MainActivity : Activity() {
         root.addView(serverUrlInput)
         playerNameInput = input("玩家昵称", playerNameValue)
         root.addView(playerNameInput)
-        maxPlayersInput = input("房间人数 3～10", maxPlayersValue)
+        maxPlayersInput = input("房间人数 3～10（斗地主固定 3 人）", maxPlayersValue)
         root.addView(maxPlayersInput)
+        root.addView(text("游戏模式", 15f, true))
+        modeInput = Spinner(this)
+        modeInput.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, listOf("身份模式", "斗地主模式（3 人）", "双将模式（规则开发中）"))
+        modeInput.setSelection(when (modeValue) { "duel_lord" -> 1; "double_general" -> 2; else -> 0 })
+        root.addView(modeInput)
         roomCodeInput = input("加入房间时填写房间码", roomCodeValue)
         root.addView(roomCodeInput)
         onlineStatus = text("未连接。当前尚未部署公共服务器。", 14f)
@@ -116,8 +121,8 @@ class MainActivity : Activity() {
             connectAndSend(JSONObject()
                 .put("type", "create_room")
                 .put("name", playerNameValue)
-                .put("mode", "standard")
-                .put("maxPlayers", count).toString())
+                .put("mode", modeValue)
+                .put("maxPlayers", if (modeValue == "duel_lord") 3 else count).toString())
         })
         root.addView(button("加入房间") {
             saveOnlineInputs()
@@ -143,6 +148,7 @@ class MainActivity : Activity() {
         playerNameValue = playerNameInput.text.toString().trim().ifBlank { "玩家" }
         maxPlayersValue = maxPlayersInput.text.toString().trim()
         roomCodeValue = roomCodeInput.text.toString().trim().uppercase()
+        modeValue = when (modeInput.selectedItemPosition) { 1 -> "duel_lord"; 2 -> "double_general"; else -> "standard" }
     }
 
     private fun connectAndSend(message: String) {
