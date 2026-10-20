@@ -1,5 +1,5 @@
 import { randomBytes, randomUUID } from 'node:crypto';
-import { createGameState, startGame, drawCards, playCard, applyDamage, advanceTurn, evaluateVictory, GAME_MODES, assignIdentityRoles } from './engine.mjs';
+import { createGameState, startGame, drawCards, playCard, applyDamage, advanceTurn, evaluateVictory, GAME_MODES, assignIdentityRoles, assignDuelLordRoles } from './engine.mjs';
 
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 function roomCode() {
