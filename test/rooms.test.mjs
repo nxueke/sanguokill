@@ -95,6 +95,8 @@ test('only landlord selects two generals in landlord mode', () => {
   const landlordIndex = room.assignedRoles.indexOf('landlord');
   const landlord = room.players[landlordIndex];
   const peasant = room.players[room.assignedRoles.indexOf('peasant')];
+  assert.equal(manager.snapshot(room, landlord.id).players.find(p => p.id === landlord.id).role, 'landlord');
+  assert.equal(manager.snapshot(room, peasant.id).players.find(p => p.id === landlord.id).role, undefined);
   assert.throws(() => manager.selectGenerals(peasant.token, ['wei_guard', 'wu_sage']), /只有地主/);
   assert.throws(() => manager.start(host.token), /地主必须先选择/);
   manager.selectGenerals(landlord.token, ['wei_guard', 'wu_sage']);
