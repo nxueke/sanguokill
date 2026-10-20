@@ -129,7 +129,7 @@ test('draw-two card draws two cards and steal transfers one target card', () => 
   const beforeDraw = hostState.hand.length;
   hostState.hand.push({ id: 'draw-two-test', name: '摸二张', kind: 'draw2' });
   manager.act(host.token, { type: 'play_card', cardId: 'draw-two-test' });
-  assert.equal(hostState.hand.length, beforeDraw + 1);
+  assert.equal(hostState.hand.length, beforeDraw + 2);
 
   hostState.hand.push({ id: 'steal-test', name: '顺手牵羊', kind: 'steal' });
   const guestBefore = guestState.hand.length;
