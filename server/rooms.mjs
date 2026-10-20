@@ -105,7 +105,7 @@ export class RoomManager {
       const played = playCard(room.game, { playerId: player.id, cardId: action.cardId, targetId: action.targetId ?? null });
       const card = played.card;
       if (card.kind === 'attack' && played.targetId) applyDamage(room.game, { sourceId: player.id, targetId: played.targetId, amount: 1 });
-      if (card.kind === 'heal') player.hp = Math.min(player.hp + 1, player.maxHp);
+      if (card.kind === 'heal') { const target = room.game.players.find(p => p.id === player.id); target.hp = Math.min(target.hp + 1, target.maxHp); }
       return room;
     }
     if (action?.type === 'draw') {
