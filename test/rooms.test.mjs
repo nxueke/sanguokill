@@ -58,3 +58,12 @@ test('expired reconnect token is rejected', () => {
   now += 11;
   assert.throws(() => manager.reconnect({ token: player.token, socket: {} }), /无法恢复房间/);
 });
+
+test('finished game snapshots expose the finished status', () => {
+  const manager = new RoomManager();
+  const { room, player } = manager.create({ name: 'Host' });
+  room.status = 'playing';
+  room.game = { status: 'finished', mode: 'standard', players: [], currentPlayerIndex: 0, turnNumber: 1, winner: player.id, winningSide: 'lord', discard: [], log: [] };
+  assert.equal(manager.snapshot(room, player.id).status, 'finished');
+  assert.equal(manager.leave(player.token), room);
+});
