@@ -246,7 +246,7 @@ class MainActivity : Activity() {
                 val armor = p.optString("armor").takeIf { it.isNotBlank() && it != "null" }?.let { " · 装备 $it" } ?: ""
                 val role = p.optString("role").takeIf { it.isNotBlank() && it != "null" }
                 val roleText = role?.let { " · 身份 ${roleLabel(it)}" } ?: ""
-                playerLines.add("${p.optString("name")}$hostMark · 体力 ${p.optInt("hp", 4)} · 手牌 ${p.optInt("handCount")} · $connection$roleText")
+                playerLines.add("${p.optString("name")}$hostMark · 体力 ${p.optInt("hp", 4)} · 手牌 ${p.optInt("handCount")} · $connection$armor$roleText")
             }
         }
         root.addView(text(playerLines.joinToString("\n").ifBlank { "等待玩家加入……" }, 15f))
@@ -390,6 +390,7 @@ class MainActivity : Activity() {
         "dodge" -> "闪避"
         "draw2" -> "摸两张牌"
         "steal" -> "获得目标随机一张手牌"
+        "armor" -> "装备：抵挡下一次【杀】"
         else -> kind
     }
 
