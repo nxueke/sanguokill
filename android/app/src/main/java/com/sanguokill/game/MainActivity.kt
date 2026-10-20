@@ -3,11 +3,20 @@ package com.sanguokill.game
 import android.app.Activity
 import android.os.Bundle
 import android.graphics.Typeface
+import android.view.Gravity
 import android.widget.Button
+import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.Response
+import okhttp3.WebSocket
+import okhttp3.WebSocketListener
+import org.json.JSONObject
+import java.util.concurrent.TimeUnit
 
 private data class GameCard(val id: Int, val name: String, val description: String)
 
@@ -15,8 +24,23 @@ class MainActivity : Activity() {
     private lateinit var status: TextView
     private lateinit var handBox: LinearLayout
     private lateinit var logBox: LinearLayout
+    private lateinit var onlineStatus: TextView
+    private lateinit var serverUrlInput: EditText
+    private lateinit var playerNameInput: EditText
+    private lateinit var roomCodeInput: EditText
+    private lateinit var maxPlayersInput: EditText
     private val cards = mutableListOf<GameCard>()
     private val log = mutableListOf<String>()
+    private val httpClient = OkHttpClient.Builder().readTimeout(0, TimeUnit.MILLISECONDS).build()
+    private var webSocket: WebSocket? = null
+    private var pendingMessage: String? = null
+    private var playerToken: String? = null
+    private var playerId: String? = null
+    private var latestRoomState: JSONObject? = null
+    private var serverUrlValue = "ws://10.0.2.2:3000/ws"
+    private var playerNameValue = "玩家"
+    private var roomCodeValue = ""
+    private var maxPlayersValue = "3"
     private var hp = 4
     private var opponentHp = 4
     private var turn = 1
@@ -27,6 +51,13 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         showLobby()
+    }
+
+    override fun onDestroy() {
+        webSocket?.close(1000, "activity destroyed")
+        webSocket = null
+        httpClient.dispatcher.executorService.shutdown()
+        super.onDestroy()
     }
 
     private fun text(value: String, size: Float = 16f, bold: Boolean = false): TextView =
@@ -45,15 +76,222 @@ class MainActivity : Activity() {
         setPadding(16, 12, 16, 16)
     }
 
+    private fun input(hintText: String, value: String): EditText =
+        EditText(this).apply { hint = hintText; setText(value); singleLine = true }
+
     private fun showLobby() {
         val root = column()
         root.addView(text("三国卡牌 · 开发版", 26f, true))
-        root.addView(text("原创卡牌规则验证客户端\n当前版本：本地对局测试；在线房间正在开发。", 16f))
+        root.addView(text("本地对局可直接体验；在线房间需要先运行或部署游戏服务端。", 16f))
         root.addView(button("开始本地对局") { startLocalGame() })
-        root.addView(button("玩法与进度") {
-            Toast.makeText(this, "当前提供基础本地对局；多人在线功能尚未接入。", Toast.LENGTH_LONG).show()
+        root.addView(button("多人在线房间") { showOnlineLobby() })
+        root.addView(button("项目说明") {
+            Toast.makeText(this, "这是早期开发版，基础包、军争包及完整身份/技能规则仍在开发。", Toast.LENGTH_LONG).show()
         })
         setContentView(root)
+    }
+
+    private fun showOnlineLobby() {
+        val root = column()
+        root.addView(text("多人在线 · 连接设置", 23f, true))
+        root.addView(text("服务端地址（模拟器默认值；真机请填写可访问的服务器地址）", 14f))
+        serverUrlInput = input("ws://主机地址:3000/ws", serverUrlValue)
+        root.addView(serverUrlInput)
+        playerNameInput = input("玩家昵称", playerNameValue)
+        root.addView(playerNameInput)
+        maxPlayersInput = input("房间人数 3～10", maxPlayersValue)
+        root.addView(maxPlayersInput)
+        roomCodeInput = input("加入房间时填写房间码", roomCodeValue)
+        root.addView(roomCodeInput)
+        onlineStatus = text("未连接。当前尚未部署公共服务器。", 14f)
+        root.addView(onlineStatus)
+        root.addView(button("创建房间") {
+            saveOnlineInputs()
+            val count = maxPlayersValue.toIntOrNull()?.coerceIn(3, 10) ?: 3
+            connectAndSend(JSONObject()
+                .put("type", "create_room")
+                .put("name", playerNameValue)
+                .put("mode", "standard")
+                .put("maxPlayers", count).toString())
+        })
+        root.addView(button("加入房间") {
+            saveOnlineInputs()
+            if (roomCodeValue.isBlank()) {
+                Toast.makeText(this, "请先填写房间码。", Toast.LENGTH_SHORT).show()
+            } else {
+                connectAndSend(JSONObject().put("type", "join_room")
+                    .put("name", playerNameValue).put("code", roomCodeValue).toString())
+            }
+        })
+        root.addView(button("返回主菜单") { showLobby() })
+        setContentView(ScrollView(this).apply { addView(root) })
+    }
+
+    private fun saveOnlineInputs() {
+        serverUrlValue = serverUrlInput.text.toString().trim()
+        playerNameValue = playerNameInput.text.toString().trim().ifBlank { "玩家" }
+        maxPlayersValue = maxPlayersInput.text.toString().trim()
+        roomCodeValue = roomCodeInput.text.toString().trim().uppercase()
+    }
+
+    private fun connectAndSend(message: String) {
+        val existing = webSocket
+        if (existing != null) {
+            if (!existing.send(message)) showToast("发送失败，请重新连接。")
+            return
+        }
+        pendingMessage = message
+        val request = try {
+            Request.Builder().url(serverUrlValue).build()
+        } catch (e: Exception) {
+            pendingMessage = null
+            showToast("服务端地址无效：${e.message}")
+            return
+        }
+        runOnUiThread { onlineStatus.text = "正在连接服务器……" }
+        val created = httpClient.newWebSocket(request, object : WebSocketListener() {
+            override fun onOpen(socket: WebSocket, response: Response) {
+                webSocket = socket
+                val firstMessage = pendingMessage
+                pendingMessage = null
+                if (firstMessage != null) socket.send(firstMessage)
+                runOnUiThread { if (latestRoomState == null) onlineStatus.text = "已连接，等待服务器响应……" }
+            }
+
+            override fun onMessage(socket: WebSocket, text: String) {
+                try {
+                    val messageObject = JSONObject(text)
+                    when (messageObject.optString("type")) {
+                        "welcome" -> {
+                            playerToken = messageObject.optString("token").takeIf { it.isNotBlank() }
+                            playerId = messageObject.optString("playerId").takeIf { it.isNotBlank() }
+                            latestRoomState = messageObject.optJSONObject("state")
+                            runOnUiThread { latestRoomState?.let { renderOnlineState(it) } }
+                        }
+                        "room_state" -> {
+                            latestRoomState = messageObject.optJSONObject("state")
+                            runOnUiThread { latestRoomState?.let { renderOnlineState(it) } }
+                        }
+                        "error" -> showToast(messageObject.optString("message", "操作失败"))
+                        "left_room" -> {
+                            latestRoomState = null
+                            playerToken = null
+                            playerId = null
+                            runOnUiThread { showOnlineLobby() }
+                        }
+                    }
+                } catch (e: Exception) {
+                    showToast("服务器返回的数据无法解析。")
+                }
+            }
+
+            override fun onFailure(socket: WebSocket, t: Throwable, response: Response?) {
+                if (webSocket === socket) webSocket = null
+                pendingMessage = null
+                showToast("连接失败：${t.message ?: "请检查服务器地址与网络"}")
+            }
+
+            override fun onClosed(socket: WebSocket, code: Int, reason: String) {
+                if (webSocket === socket) webSocket = null
+            }
+        })
+        if (webSocket == null) webSocket = created
+    }
+
+    private fun sendOnlineMessage(message: JSONObject) {
+        val socket = webSocket
+        if (socket == null) {
+            showToast("尚未连接服务器。")
+            return
+        }
+        if (!socket.send(message.toString())) showToast("发送失败，请检查网络。")
+    }
+
+    private fun renderOnlineState(state: JSONObject) {
+        latestRoomState = state
+        val root = column()
+        root.addView(text("在线房间 · " + state.optString("code"), 23f, true))
+        root.addView(text("模式：" + state.optString("mode") + "    状态：" + state.optString("status"), 15f))
+        val players = state.optJSONArray("players")
+        val playerLines = mutableListOf<String>()
+        if (players != null) {
+            for (i in 0 until players.length()) {
+                val p = players.optJSONObject(i) ?: continue
+                val hostMark = if (p.optBoolean("host")) "（房主）" else ""
+                val connection = if (p.optBoolean("connected")) "在线" else "断线"
+                playerLines.add("${p.optString("name")}$hostMark · 体力 ${p.optInt("hp", 4)} · 手牌 ${p.optInt("handCount")} · $connection")
+            }
+        }
+        root.addView(text(playerLines.joinToString("\n").ifBlank { "等待玩家加入……" }, 15f))
+        root.addView(button("复制房间码") {
+            val clipboard = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
+            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("房间码", state.optString("code")))
+            showToast("房间码已复制。")
+        })
+        if (state.optString("status") == "waiting" && state.optString("hostId") == playerId) {
+            root.addView(button("开始游戏（至少 3 名玩家）") {
+                sendOnlineMessage(JSONObject().put("type", "start_game"))
+            })
+        }
+        if (state.optString("status") == "playing") {
+            root.addView(text("当前行动玩家：" + state.optString("currentPlayerId") + "    回合：" + state.optInt("turnNumber"), 15f, true))
+            root.addView(button("摸一张牌") {
+                sendOnlineMessage(JSONObject().put("type", "action").put("action", JSONObject().put("type", "draw")))
+            })
+            root.addView(button("结束回合") {
+                sendOnlineMessage(JSONObject().put("type", "action").put("action", JSONObject().put("type", "end_turn")))
+            })
+            root.addView(text("你的手牌（点击使用）", 18f, true))
+            val ownPlayer = players?.let { array ->
+                (0 until array.length()).mapNotNull { array.optJSONObject(it) }.firstOrNull { it.optString("id") == playerId }
+            }
+            val hand = ownPlayer?.optJSONArray("hand")
+            if (hand != null) {
+                for (i in 0 until hand.length()) {
+                    val card = hand.optJSONObject(i) ?: continue
+                    val cardId = card.optString("id")
+                    val cardName = card.optString("name")
+                    val kind = card.optString("kind")
+                    root.addView(button("【$cardName】 · ${kindLabel(kind)}") {
+                        if (kind == "dodge") {
+                            showToast("【闪】当前服务端尚未实现响应窗口。")
+                        } else {
+                            val action = JSONObject().put("type", "play_card").put("cardId", cardId)
+                            if (kind == "attack") {
+                                val target = players?.let { array ->
+                                    (0 until array.length()).mapNotNull { array.optJSONObject(it) }
+                                        .firstOrNull { it.optString("id") != playerId && it.optBoolean("alive", true) }
+                                }
+                                if (target == null) {
+                                    showToast("没有可攻击的目标。")
+                                    return@button
+                                }
+                                action.put("targetId", target.optString("id"))
+                            }
+                            sendOnlineMessage(JSONObject().put("type", "action").put("action", action))
+                        }
+                    })
+                }
+            } else {
+                root.addView(text("等待服务器同步你的手牌。", 14f))
+            }
+        }
+        root.addView(button("离开 / 返回连接页") {
+            if (playerToken != null) sendOnlineMessage(JSONObject().put("type", "leave_room"))
+            else showOnlineLobby()
+        })
+        setContentView(ScrollView(this).apply { addView(root) })
+    }
+
+    private fun kindLabel(kind: String): String = when (kind) {
+        "attack" -> "攻击"
+        "heal" -> "回复"
+        "dodge" -> "闪避"
+        else -> kind
+    }
+
+    private fun showToast(message: String) {
+        runOnUiThread { Toast.makeText(this, message, Toast.LENGTH_LONG).show() }
     }
 
     private fun startLocalGame() {
@@ -103,6 +341,7 @@ class MainActivity : Activity() {
         root.addView(text("对局记录", 18f, true))
         logBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         root.addView(logBox)
+        root.addView(button("返回主菜单") { showLobby() })
         val scroll = ScrollView(this)
         scroll.addView(root)
         setContentView(scroll)
