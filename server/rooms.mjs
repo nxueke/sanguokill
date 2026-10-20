@@ -1,5 +1,5 @@
 import { randomBytes, randomUUID } from 'node:crypto';
-import { createGameState, startGame, drawCards, playCard, applyDamage, advanceTurn, GAME_MODES, assignIdentityRoles } from './engine.mjs';
+import { createGameState, startGame, drawCards, playCard, applyDamage, advanceTurn, evaluateVictory, GAME_MODES, assignIdentityRoles } from './engine.mjs';
 
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 function roomCode() {
@@ -105,39 +105,94 @@ export class RoomManager {
   act(token, action) {
     const { room, player } = this.#session(token);
     if (room.status !== 'playing' || !room.game) throw new Error('对局尚未开始');
+    const game = room.game;
+
+    if (game.pendingResponse) {
+      const pending = game.pendingResponse;
+      if (pending.type === 'dodge') {
+        if (player.id !== pending.targetId) throw new Error('正在等待受【杀】目标响应');
+        if (action?.type !== 'respond' || !['dodge', 'pass'].includes(action.response)) throw new Error('请打出【闪】或选择不响应');
+        if (action.response === 'dodge') {
+          const card = removeResponseCard(game, player.id, action.cardId, 'dodge');
+          game.discard.push(card);
+          game.log.push({ type: 'card_responded', playerId: player.id, card: card.name, response: 'dodge' });
+          game.pendingResponse = null;
+          game.log.push({ type: 'attack_evaded', sourceId: pending.sourceId, targetId: pending.targetId });
+          return room;
+        }
+        game.pendingResponse = null;
+        applyDamage(game, { sourceId: pending.sourceId, targetId: pending.targetId, amount: 1, deferDying: true });
+        if (game.dyingPlayerId) beginRescue(game, game.dyingPlayerId);
+        return room;
+      }
+      if (pending.type === 'rescue') {
+        const expectedId = pending.order[pending.cursor];
+        if (player.id !== expectedId) throw new Error('正在等待另一名玩家进行濒死救援');
+        if (action?.type !== 'rescue' || !['save', 'pass'].includes(action.response)) throw new Error('请使用【桃】救援或选择放弃');
+        const dying = game.players.find(p => p.id === pending.targetId);
+        if (action.response === 'save') {
+          const card = removeResponseCard(game, player.id, action.cardId, 'heal');
+          game.discard.push(card);
+          if (!dying) throw new Error('濒死玩家不存在');
+          dying.hp += 1;
+          game.log.push({ type: 'rescue', rescuerId: player.id, targetId: dying.id, hp: dying.hp });
+          if (dying.hp > 0) {
+            dying.alive = true;
+            game.dyingPlayerId = null;
+            game.pendingResponse = null;
+            return room;
+          }
+        }
+        pending.cursor += 1;
+        if (pending.cursor >= pending.order.length) {
+          if (dying) {
+            dying.alive = false;
+            game.dyingPlayerId = null;
+            game.log.push({ type: 'player_died', playerId: dying.id });
+            game.pendingResponse = null;
+            evaluateVictory(game);
+          } else {
+            game.pendingResponse = null;
+          }
+        }
+        return room;
+      }
+    }
+
     if (action?.type === 'play_card') {
-      const current = room.game.players[room.game.currentPlayerIndex];
+      const current = game.players[game.currentPlayerIndex];
       if (current?.id !== player.id) throw new Error('还没轮到你');
-      const heldCard = playerCard(room.game, player.id, action.cardId);
-      if (heldCard.kind === 'dodge') throw new Error('【闪】只能在受到【杀】时响应，暂不能主动打出');
-      if (heldCard.kind === 'attack' && room.game.attacksUsedThisTurn) throw new Error('本回合已经使用过【杀】');
+      const heldCard = playerCard(game, player.id, action.cardId);
+      if (heldCard.kind === 'dodge') throw new Error('【闪】只能在受到【杀】时响应');
+      if (heldCard.kind === 'attack' && game.attacksUsedThisTurn) throw new Error('本回合已经使用过【杀】');
       if (heldCard.kind === 'attack' && !action.targetId) throw new Error('使用【杀】必须选择目标');
       if (heldCard.kind !== 'attack' && action.targetId) throw new Error('该牌不能指定目标');
-      const played = playCard(room.game, { playerId: player.id, cardId: action.cardId, targetId: action.targetId ?? null });
+      const played = playCard(game, { playerId: player.id, cardId: action.cardId, targetId: action.targetId ?? null });
       const card = played.card;
       if (card.kind === 'attack') {
-        room.game.attacksUsedThisTurn = true;
-        applyDamage(room.game, { sourceId: player.id, targetId: played.targetId, amount: 1 });
+        game.attacksUsedThisTurn = true;
+        game.pendingResponse = { type: 'dodge', sourceId: player.id, targetId: played.targetId };
+        game.log.push({ type: 'response_requested', response: 'dodge', sourceId: player.id, targetId: played.targetId });
       }
       if (card.kind === 'heal') {
-        const target = room.game.players.find(p => p.id === player.id);
+        const target = game.players.find(p => p.id === player.id);
         target.hp = Math.min(target.hp + 1, target.maxHp);
-        room.game.log.push({ type: 'healed', playerId: player.id, hp: target.hp });
+        game.log.push({ type: 'healed', playerId: player.id, hp: target.hp });
       }
       return room;
     }
     if (action?.type === 'draw') {
-      if (room.game.players[room.game.currentPlayerIndex]?.id !== player.id) throw new Error('还没轮到你');
-      if (room.game.drawnThisTurn) throw new Error('本回合已经摸过牌');
-      const drawn = drawCards(room.game, player.id, 1);
-      room.game.drawnThisTurn = true;
+      if (game.players[game.currentPlayerIndex]?.id !== player.id) throw new Error('还没轮到你');
+      if (game.drawnThisTurn) throw new Error('本回合已经摸过牌');
+      drawCards(game, player.id, 1);
+      game.drawnThisTurn = true;
       return room;
     }
     if (action?.type === 'end_turn') {
-      if (room.game.players[room.game.currentPlayerIndex]?.id !== player.id) throw new Error('还没轮到你');
-      advanceTurn(room.game);
-      room.game.drawnThisTurn = false;
-      room.game.attacksUsedThisTurn = false;
+      if (game.players[game.currentPlayerIndex]?.id !== player.id) throw new Error('还没轮到你');
+      advanceTurn(game);
+      game.drawnThisTurn = false;
+      game.attacksUsedThisTurn = false;
       return room;
     }
     throw new Error('未知操作类型');
@@ -156,6 +211,7 @@ export class RoomManager {
       }),
       currentPlayerId: game?.players[game.currentPlayerIndex]?.id ?? null,
       turnNumber: game?.turnNumber ?? 0, winner: game?.winner ?? null, winningSide: game?.winningSide ?? null,
+      pendingResponse: game?.pendingResponse ? { type: game.pendingResponse.type, targetId: game.pendingResponse.targetId, responsePlayerId: game.pendingResponse.type === 'rescue' ? game.pendingResponse.order[game.pendingResponse.cursor] : game.pendingResponse.targetId } : null,
       discardCount: game?.discard.length ?? 0,
       log: game?.log.slice(-20) ?? [],
     };
@@ -197,4 +253,22 @@ function makeStarterDeck() {
     deck.push({ id: 'c' + id++, name, kind });
   }
   return deck;
+}
+
+function removeResponseCard(game, playerId, cardId, requiredKind) {
+  const player = game.players.find(p => p.id === playerId);
+  const index = player?.hand.findIndex(card => card.id === cardId) ?? -1;
+  if (index < 0) throw new Error('手牌中没有这张牌');
+  if (player.hand[index].kind !== requiredKind) throw new Error(requiredKind === 'dodge' ? '响应【杀】必须使用【闪】' : '濒死救援必须使用【桃】');
+  return player.hand.splice(index, 1)[0];
+}
+
+function beginRescue(game, targetId) {
+  const targetIndex = game.players.findIndex(p => p.id === targetId);
+  const order = [];
+  for (let step = 0; step < game.players.length; step++) {
+    const p = game.players[(targetIndex + step) % game.players.length];
+    if (p.alive) order.push(p.id);
+  }
+  game.pendingResponse = { type: 'rescue', targetId, order, cursor: 0 };
 }
