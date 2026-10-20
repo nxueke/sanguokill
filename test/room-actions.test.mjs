@@ -138,3 +138,19 @@ test('draw-two card draws two cards and steal transfers one target card', () => 
   assert.equal(guestState.hand.length, guestBefore - 1);
   assert.equal(hostState.hand.length, hostBefore);
 });
+
+test('armor equips into a slot and blocks one incoming attack', () => {
+  const { manager, room, host, guest } = startedRoom();
+  const hostState = room.game.players.find(p => p.id === host.id);
+  const guestState = room.game.players.find(p => p.id === guest.id);
+  hostState.hand.push({ id: 'armor-test', name: '护心镜', kind: 'armor' });
+  manager.act(host.token, { type: 'play_card', cardId: 'armor-test' });
+  assert.equal(hostState.armor.id, 'armor-test');
+  assert.equal(room.game.discard.some(card => card.id === 'armor-test'), false);
+  guestState.hand.push({ id: 'guest-attack', name: '杀', kind: 'attack' });
+  manager.act(host.token, { type: 'end_turn' });
+  manager.act(guest.token, { type: 'play_card', cardId: 'guest-attack', targetId: host.id });
+  manager.act(host.token, { type: 'respond', response: 'pass' });
+  assert.equal(hostState.hp, 4);
+  assert.equal(hostState.armor, null);
+});
