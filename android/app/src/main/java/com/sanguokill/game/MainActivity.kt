@@ -123,6 +123,12 @@ class MainActivity : Activity() {
                     .put("name", playerNameValue).put("code", roomCodeValue).toString())
             }
         })
+        if (playerToken != null) {
+            root.addView(button("重连上次房间") {
+                saveOnlineInputs()
+                connectAndSend(JSONObject().put("type", "reconnect").put("token", playerToken).toString())
+            })
+        }
         root.addView(button("返回主菜单") { showLobby() })
         setContentView(ScrollView(this).apply { addView(root) })
     }
@@ -188,7 +194,14 @@ class MainActivity : Activity() {
             override fun onFailure(socket: WebSocket, t: Throwable, response: Response?) {
                 if (webSocket === socket) webSocket = null
                 pendingMessage = null
-                showToast("连接失败：${t.message ?: "请检查服务器地址与网络"}")
+                runOnUiThread {
+                    if (playerToken != null) {
+                        showOnlineLobby()
+                        onlineStatus.text = "连接失败或已断开，可检查地址后重连。"
+                    } else {
+                        Toast.makeText(this@MainActivity, "连接失败：${t.message ?: "请检查服务器地址与网络"}", Toast.LENGTH_LONG).show()
+                    }
+                }
             }
 
             override fun onClosed(socket: WebSocket, code: Int, reason: String) {
