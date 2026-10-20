@@ -250,6 +250,15 @@ class MainActivity : Activity() {
             }
         }
         root.addView(text(playerLines.joinToString("\n").ifBlank { "等待玩家加入……" }, 15f))
+        val eventLog = state.optJSONArray("log")
+        if (eventLog != null && eventLog.length() > 0) {
+            root.addView(text("对局记录", 17f, true))
+            val from = (eventLog.length() - 8).coerceAtLeast(0)
+            for (i in from until eventLog.length()) {
+                val event = eventLog.optJSONObject(i) ?: continue
+                root.addView(text("· " + describeEvent(event), 13f))
+            }
+        }
         root.addView(button("复制房间码") {
             val clipboard = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
             clipboard.setPrimaryClip(android.content.ClipData.newPlainText("房间码", state.optString("code")))
@@ -357,6 +366,28 @@ class MainActivity : Activity() {
             else showOnlineLobby()
         })
         setContentView(ScrollView(this).apply { addView(root) })
+    }
+
+    private fun describeEvent(event: JSONObject): String {
+        val type = event.optString("type")
+        return when (type) {
+            "game_started" -> "对局开始"
+            "turn_started" -> "轮到玩家 " + event.optString("playerId")
+            "card_played" -> "玩家 " + event.optString("playerId") + " 使用了卡牌"
+            "response_requested" -> "玩家 " + event.optString("targetId") + " 需要响应【杀】"
+            "attack_evaded" -> "玩家 " + event.optString("targetId") + " 用【闪】躲过攻击"
+            "damage" -> "玩家 " + event.optString("targetId") + " 受到 " + event.optInt("amount") + " 点伤害"
+            "healed" -> "玩家 " + event.optString("playerId") + " 回复体力"
+            "rescue" -> "玩家 " + event.optString("rescuerId") + " 救援了玩家 " + event.optString("targetId")
+            "player_dying" -> "玩家 " + event.optString("playerId") + " 进入濒死状态"
+            "player_died" -> "玩家 " + event.optString("playerId") + " 阵亡"
+            "card_stolen" -> "玩家 " + event.optString("playerId") + " 获得目标一张手牌"
+            "armor_blocked" -> "玩家 " + event.optString("targetId") + " 的护心镜抵挡了攻击"
+            "equipment_equipped" -> "玩家 " + event.optString("playerId") + " 装备了护心镜"
+            "cards_drawn" -> "玩家 " + event.optString("playerId") + " 摸了 " + event.optInt("count") + " 张牌"
+            "game_finished" -> "对局结束，胜利阵营：" + sideLabel(event.optString("winningSide"))
+            else -> type
+        }
     }
 
     private fun roleLabel(role: String): String = when (role) {
