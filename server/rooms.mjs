@@ -274,7 +274,7 @@ export class RoomManager {
       players: room.players.map((p, roomIndex) => {
         const gp = game?.players.find(x => x.id === p.id);
         return { id: p.id, name: p.name, host: p.id === room.hostId, connected: p.connected,
-          hp: gp?.hp ?? 4, maxHp: gp?.maxHp ?? 4, alive: gp?.alive ?? true, armor: gp?.armor?.name ?? null, generals: gp?.generals?.length ? gp.generals : p.selectedGenerals.map(id => GENERAL_CATALOG.find(g => g.id === id)?.name ?? id), generalSkills: gp?.generalSkills ?? [], handCount: gp?.hand.length ?? 0,
+          hp: gp?.hp ?? 4, maxHp: gp?.maxHp ?? 4, alive: gp?.alive ?? true, armor: gp?.armor?.name ?? null, generals: gp?.generals?.length ? gp.generals : p.selectedGenerals.map(id => GENERAL_CATALOG.find(g => g.id === id)?.name ?? id), generalSkills: gp?.generalSkills?.length ? gp.generalSkills : p.selectedGenerals.map(id => GENERAL_CATALOG.find(g => g.id === id)?.skill ?? ''), handCount: gp?.hand.length ?? 0,
           hand: p.id === viewerId ? (gp?.hand ?? []) : undefined, role: p.id === viewerId ? (gp?.role ?? room.assignedRoles?.[roomIndex] ?? null) : undefined };
       }),
       currentPlayerId: game?.players[game.currentPlayerIndex]?.id ?? null,
