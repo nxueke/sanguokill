@@ -350,6 +350,11 @@ function makeStarterDeck() {
     const name = kind === 'heal' ? '桃' : kind === 'attack' ? '杀' : kind === 'dodge' ? '闪' : kind === 'draw2' ? '摸二张' : kind === 'steal' ? '顺手牵羊' : '护心镜';
     deck.push({ id: 'c' + id++, name, kind });
   }
+  // Shuffle before dealing; a fixed repeating order leaks card identities and is unfair.
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
   return deck;
 }
 
