@@ -450,6 +450,7 @@ class MainActivity : Activity() {
             "armor_blocked" -> "玩家 " + event.optString("targetId") + " 的护心镜抵挡了攻击"
             "equipment_equipped" -> "玩家 " + event.optString("playerId") + " 装备了护心镜"
             "cards_drawn" -> "玩家 " + event.optString("playerId") + " 摸了 " + event.optInt("count") + " 张牌"
+            "wine_used" -> "玩家 " + event.optString("playerId") + " 使用【酒】，下一张【杀】伤害 +1"
             "game_finished" -> "对局结束，胜利阵营：" + sideLabel(event.optString("winningSide"))
             else -> type
         }
@@ -487,6 +488,7 @@ class MainActivity : Activity() {
         "draw2" -> "摸两张牌"
         "steal" -> "获得目标随机一张手牌"
         "armor" -> "装备：抵挡下一次【杀】"
+        "wine" -> "强化：下一张【杀】伤害 +1"
         else -> kind
     }
 
