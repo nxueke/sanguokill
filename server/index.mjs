@@ -4,7 +4,8 @@ import { RoomManager } from './rooms.mjs';
 
 const port = Number(process.env.PORT ?? 3000);
 const manager = new RoomManager();
-const responseTimeoutMs = Math.max(5_000, Number(process.env.RESPONSE_TIMEOUT_MS ?? 30_000));
+const configuredResponseTimeout = Number(process.env.RESPONSE_TIMEOUT_MS ?? 30_000);
+const responseTimeoutMs = Number.isFinite(configuredResponseTimeout) ? Math.max(5_000, configuredResponseTimeout) : 30_000;
 const responseTimers = new Map();
 const server = createServer((req, res) => {
   if (req.url === '/health' && req.method === 'GET') {
@@ -53,7 +54,7 @@ function scheduleResponseTimeout(room) {
         : { type: 'respond', response: 'pass' });
       broadcast(liveRoom);
     } catch (error) {
-      sendError(expectedPlayer.socket, error?.message ?? '响应超时处理失败');
+      if (expectedPlayer.socket) sendError(expectedPlayer.socket, error?.message ?? '响应超时处理失败');
     }
   }, responseTimeoutMs);
   timer.unref?.();
