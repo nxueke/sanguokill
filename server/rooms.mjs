@@ -1,5 +1,5 @@
 import { randomBytes, randomUUID } from 'node:crypto';
-import { createGameState, startGame, drawCards, playCard, applyDamage, advanceTurn, GAME_MODES } from './engine.mjs';
+import { createGameState, startGame, drawCards, playCard, applyDamage, advanceTurn, GAME_MODES, assignIdentityRoles } from './engine.mjs';
 
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 function roomCode() {
@@ -93,7 +93,7 @@ export class RoomManager {
       p.id = room.players[i].id;
       p.name = room.players[i].name;
     });
-    startGame(state);
+    startGame(state, { roles: room.mode === GAME_MODES.STANDARD ? assignIdentityRoles(room.players.length) : [] });
     state.players.forEach(p => drawCards(state, p.id, 4));
     state.drawnThisTurn = false;
     room.game = state;
@@ -146,7 +146,7 @@ export class RoomManager {
         const gp = game?.players.find(x => x.id === p.id);
         return { id: p.id, name: p.name, host: p.id === room.hostId, connected: p.connected,
           hp: gp?.hp ?? 4, alive: gp?.alive ?? true, handCount: gp?.hand.length ?? 0,
-          hand: p.id === viewerId ? (gp?.hand ?? []) : undefined };
+          hand: p.id === viewerId ? (gp?.hand ?? []) : undefined, role: p.id === viewerId ? (gp?.role ?? null) : undefined };
       }),
       currentPlayerId: game?.players[game.currentPlayerIndex]?.id ?? null,
       turnNumber: game?.turnNumber ?? 0, winner: game?.winner ?? null,
