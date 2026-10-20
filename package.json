@@ -1,9 +1,10 @@
 {
   "name": "sanguokill-online",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "Original, extensible multiplayer Chinese-style card game project",
   "scripts": { "test": "node --test", "start": "node server/index.mjs" },
-  "engines": { "node": ">=22" }
+  "engines": { "node": ">=22" },
+  "dependencies": { "ws": "^8.18.0" }
 }
