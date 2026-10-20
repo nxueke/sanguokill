@@ -8,13 +8,21 @@ export function assignIdentityRoles(playerCount, random = Math.random) {
     throw new RangeError('playerCount must be an integer from 3 to 10');
   }
   if (typeof random !== 'function') throw new TypeError('random must be a function');
-  const loyalists = Math.floor((playerCount - 2) / 3);
-  const rebels = playerCount - 2 - loyalists;
+  const counts = {
+    3: { loyalists: 0, rebels: 1, renegades: 1 },
+    4: { loyalists: 1, rebels: 2, renegades: 0 },
+    5: { loyalists: 1, rebels: 2, renegades: 1 },
+    6: { loyalists: 2, rebels: 2, renegades: 1 },
+    7: { loyalists: 2, rebels: 3, renegades: 1 },
+    8: { loyalists: 2, rebels: 4, renegades: 1 },
+    9: { loyalists: 3, rebels: 4, renegades: 1 },
+    10: { loyalists: 3, rebels: 5, renegades: 1 },
+  }[playerCount];
   const roles = [
     IDENTITY_ROLES.LORD,
-    ...Array(loyalists).fill(IDENTITY_ROLES.LOYALIST),
-    ...Array(rebels).fill(IDENTITY_ROLES.REBEL),
-    IDENTITY_ROLES.RENEGADE,
+    ...Array(counts.loyalists).fill(IDENTITY_ROLES.LOYALIST),
+    ...Array(counts.rebels).fill(IDENTITY_ROLES.REBEL),
+    ...Array(counts.renegades).fill(IDENTITY_ROLES.RENEGADE),
   ];
   // Keep the lord in seat 1; shuffle all other roles for replayability.
   for (let i = roles.length - 1; i > 1; i--) {
