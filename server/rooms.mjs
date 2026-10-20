@@ -1,5 +1,5 @@
 import { randomBytes, randomUUID } from 'node:crypto';
-import { createGameState, startGame, drawCards, playCard, applyDamage, advanceTurn, evaluateVictory, GAME_MODES, assignIdentityRoles, assignDuelLordRoles } from './engine.mjs';
+import { createGameState, startGame, drawCards, playCard, applyDamage, advanceTurn, evaluateVictory, GAME_MODES, assignIdentityRoles, assignDuelLordRoles, GENERAL_CATALOG } from './engine.mjs';
 
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 function roomCode() {
@@ -83,18 +83,39 @@ export class RoomManager {
     return room ?? null;
   }
 
+  selectGenerals(token, generalIds) {
+    const { room, player } = this.#session(token);
+    if (room.status !== 'waiting') throw new Error('对局开始后不能更换武将');
+    if (room.mode !== GAME_MODES.DOUBLE_GENERAL) throw new Error('当前模式不需要双将选择');
+    if (!Array.isArray(generalIds) || generalIds.length !== 2 || generalIds[0] === generalIds[1]) {
+      throw new Error('必须选择两名不同的武将');
+    }
+    if (generalIds.some(id => !GENERAL_CATALOG.some(g => g.id === id))) throw new Error('包含未知武将');
+    player.selectedGenerals = [...generalIds];
+    return room;
+  }
+
   start(token) {
     const { room, player } = this.#session(token);
     if (room.hostId !== player.id) throw new Error('只有房主可以开始游戏');
     if (room.status !== 'waiting') throw new Error('房间已开始');
     if (room.players.length < 3) throw new Error('至少需要 3 名玩家才能开始');
     if (room.mode === GAME_MODES.DUEL_LORD && room.players.length !== 3) throw new Error('斗地主模式目前要求正好 3 名玩家');
+    if (room.mode === GAME_MODES.DOUBLE_GENERAL && room.players.some(p => p.selectedGenerals.length !== 2)) throw new Error('双将模式要求每名玩家先选择两名武将');
     const state = createGameState({ playerCount: room.players.length, mode: room.mode, deck: makeStarterDeck() });
     state.players.forEach((p, i) => {
       p.id = room.players[i].id;
       p.name = room.players[i].name;
     });
     startGame(state, { roles: room.mode === GAME_MODES.DUEL_LORD ? assignDuelLordRoles(room.players.length) : assignIdentityRoles(room.players.length) });
+    if (room.mode === GAME_MODES.DOUBLE_GENERAL) {
+      state.players.forEach((p, i) => {
+        const selected = room.players[i].selectedGenerals.map(id => GENERAL_CATALOG.find(g => g.id === id));
+        p.generals = selected.map(g => g.name);
+        p.maxHp = Math.max(3, Math.floor(selected.reduce((sum, g) => sum + g.maxHp, 0) / 2));
+        p.hp = p.maxHp;
+      });
+    }
     state.players.forEach(p => drawCards(state, p.id, 4));
     state.drawnThisTurn = false;
     state.attacksUsedThisTurn = false;
@@ -234,7 +255,7 @@ export class RoomManager {
       players: room.players.map(p => {
         const gp = game?.players.find(x => x.id === p.id);
         return { id: p.id, name: p.name, host: p.id === room.hostId, connected: p.connected,
-          hp: gp?.hp ?? 4, alive: gp?.alive ?? true, armor: gp?.armor?.name ?? null, handCount: gp?.hand.length ?? 0,
+          hp: gp?.hp ?? 4, maxHp: gp?.maxHp ?? 4, alive: gp?.alive ?? true, armor: gp?.armor?.name ?? null, generals: gp?.generals?.length ? gp.generals : p.selectedGenerals.map(id => GENERAL_CATALOG.find(g => g.id === id)?.name ?? id), handCount: gp?.hand.length ?? 0,
           hand: p.id === viewerId ? (gp?.hand ?? []) : undefined, role: p.id === viewerId ? (gp?.role ?? null) : undefined };
       }),
       currentPlayerId: game?.players[game.currentPlayerIndex]?.id ?? null,
@@ -255,7 +276,7 @@ export class RoomManager {
   }
 
   #newPlayer(name, socket, host) {
-    return { id: randomUUID(), token: randomBytes(24).toString('hex'), name: String(name).trim().slice(0, 24) || '玩家', socket, connected: true, disconnectedAt: null, host };
+    return { id: randomUUID(), token: randomBytes(24).toString('hex'), name: String(name).trim().slice(0, 24) || '玩家', socket, connected: true, disconnectedAt: null, host, selectedGenerals: [] };
   }
 
   #newCode() {
