@@ -7,7 +7,7 @@ An original, extensible multiplayer Chinese-style card game project. The current
 - Android native client with a local card-play loop and an initial WebSocket online-room interface.
 - Android Debug APK GitHub Actions workflow.
 - Node.js authoritative rules core and automated tests.
-- WebSocket server protocol for room creation, joining, reconnecting, host start, basic card actions, and per-player snapshots.
+- WebSocket server protocol for room creation, joining, reconnecting, host start, basic card actions, target selection, dodge response, Peach rescue, and per-player snapshots.
 - Dockerfile and Render Blueprint template for deploying the WebSocket server.
 - Per-player snapshots hide opponents' hands.
 
@@ -22,7 +22,7 @@ An original, extensible multiplayer Chinese-style card game project. The current
 - `.github/workflows/server-tests.yml`: server tests.
 - `.github/workflows/android-apk.yml`: builds and uploads a Debug APK.
 
-The server is authoritative: clients submit actions, never dictate game state. The Android client has an initial WebSocket room UI. A server must still be deployed and its `wss://.../ws` URL entered in the app before remote play works. The prototype still needs security hardening, robust response windows, and complete rule handling before public multiplayer release.
+The server is authoritative: clients submit actions, never dictate game state. The Android client has an initial WebSocket room UI. A server must still be deployed and its `wss://.../ws` URL entered in the app before remote play works. The prototype still needs security hardening, response timeouts, full rule handling, and deployment before public multiplayer release.
 
 ## Run server tests
 
@@ -67,14 +67,14 @@ This is a debug APK, not a signed Play Store release. Install only builds you tr
 
 - State model supports 3–10 players.
 - Mode identifiers for standard, landlord duel, and double-general.
-- Start validation, drawing, basic card play, server-side damage, turn advancement, once-per-turn attack limit, standard identity role distribution for 3–10 players, and initial role-based victory checks.
+- Start validation, drawing with discard-pile reshuffle, basic card play, server-side damage, once-per-turn attack limit, dodge response windows, Peach rescue, standard identity role distribution for 3–10 players, and initial role-based victory checks.
 - Room create/join/leave, host start, reconnect token handling, and per-player hand visibility.
 
 ## Remaining work
 
 - Full original card catalogue and individual card effects for the base and war expansion sets.
 - Full official role edge cases, landlord rules, double-general selection and skill combinations.
-- Response windows, dodge resolution, dying/rescue, equipment, delayed tricks, and skill triggers.
+- Response timeouts, equipment, delayed tricks, and skill triggers; current response/rescue rules are an initial implementation, not a full official rules engine.
 - Deploy the server and run real-device, multi-client online tests.
 - Reconnection and security edge-case tests; deployment and persistence.
 - End-to-end device tests and a release-signed APK.
