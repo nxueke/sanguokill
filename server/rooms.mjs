@@ -190,8 +190,7 @@ export class RoomManager {
           target.marks.ironWallUsed = true;
           game.log.push({ type: 'general_skill', playerId: target.id, generalId: 'iron_wall', skill: 'attack_blocked' });
         } else {
-          const source = game.players.find(p => p.id === pending.sourceId);
-          const damage = source?.generalIds?.includes('swift_arrow') ? 2 : 1;
+          const damage = Number.isInteger(pending.damage) ? pending.damage : 1;
           applyDamage(game, { sourceId: pending.sourceId, targetId: pending.targetId, amount: damage, deferDying: true });
           if (game.dyingPlayerId) beginRescue(game, game.dyingPlayerId);
         }
@@ -246,8 +245,15 @@ export class RoomManager {
       const card = played.card;
       if (card.kind === 'attack') {
         game.attacksUsedThisTurn = (Number(game.attacksUsedThisTurn) || 0) + 1;
-        game.pendingResponse = { type: 'dodge', sourceId: player.id, targetId: played.targetId };
+        const wineBonus = actorState.marks.wineBoost ? 1 : 0;
+        actorState.marks.wineBoost = false;
+        const damage = (actorState.generalIds?.includes('swift_arrow') ? 2 : 1) + wineBonus;
+        game.pendingResponse = { type: 'dodge', sourceId: player.id, targetId: played.targetId, damage };
         game.log.push({ type: 'response_requested', response: 'dodge', sourceId: player.id, targetId: played.targetId });
+      }
+      if (card.kind === 'wine') {
+        actorState.marks.wineBoost = true;
+        game.log.push({ type: 'wine_used', playerId: player.id });
       }
       if (card.kind === 'heal') {
         const target = game.players.find(p => p.id === player.id);
@@ -344,10 +350,10 @@ function playerCard(game, playerId, cardId) {
 function makeStarterDeck() {
   const deck = [];
   let id = 1;
-  const kinds = ['heal', 'dodge', 'attack', 'dodge', 'attack', 'draw2', 'steal', 'heal', 'armor'];
+  const kinds = ['heal', 'dodge', 'attack', 'dodge', 'attack', 'draw2', 'steal', 'heal', 'armor', 'wine'];
   for (let i = 0; i < 90; i++) {
     const kind = kinds[i % kinds.length];
-    const name = kind === 'heal' ? '桃' : kind === 'attack' ? '杀' : kind === 'dodge' ? '闪' : kind === 'draw2' ? '摸二张' : kind === 'steal' ? '顺手牵羊' : '护心镜';
+    const name = kind === 'heal' ? '桃' : kind === 'attack' ? '杀' : kind === 'dodge' ? '闪' : kind === 'draw2' ? '摸二张' : kind === 'steal' ? '顺手牵羊' : kind === 'wine' ? '酒' : '护心镜';
     deck.push({ id: 'c' + id++, name, kind });
   }
   // Shuffle before dealing; a fixed repeating order leaks card identities and is unfair.
