@@ -122,6 +122,8 @@ export class RoomManager {
         if (!isEligible) return;
         const selected = room.players[i].selectedGenerals.map(id => GENERAL_CATALOG.find(g => g.id === id));
         p.generals = selected.map(g => g.name);
+        p.generalIds = selected.map(g => g.id);
+        p.generalSkills = selected.map(g => g.skill);
         p.maxHp = Math.max(3, Math.floor(selected.reduce((sum, g) => sum + g.maxHp, 0) / 2));
         p.hp = p.maxHp;
       });
