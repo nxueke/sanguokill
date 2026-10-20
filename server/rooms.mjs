@@ -122,8 +122,15 @@ export class RoomManager {
           return room;
         }
         game.pendingResponse = null;
-        applyDamage(game, { sourceId: pending.sourceId, targetId: pending.targetId, amount: 1, deferDying: true });
-        if (game.dyingPlayerId) beginRescue(game, game.dyingPlayerId);
+        const target = game.players.find(p => p.id === pending.targetId);
+        if (target?.armor) {
+          game.discard.push(target.armor);
+          target.armor = null;
+          game.log.push({ type: 'armor_blocked', targetId: pending.targetId });
+        } else {
+          applyDamage(game, { sourceId: pending.sourceId, targetId: pending.targetId, amount: 1, deferDying: true });
+          if (game.dyingPlayerId) beginRescue(game, game.dyingPlayerId);
+        }
         return room;
       }
       if (pending.type === 'rescue') {
@@ -181,6 +188,14 @@ export class RoomManager {
         game.log.push({ type: 'healed', playerId: player.id, hp: target.hp });
       }
       if (card.kind === 'draw2') drawCards(game, player.id, 2);
+      if (card.kind === 'armor') {
+        const owner = game.players.find(p => p.id === player.id);
+        if (owner.armor) game.discard.push(owner.armor);
+        const discardIndex = game.discard.findIndex(c => c.id === card.id);
+        if (discardIndex >= 0) game.discard.splice(discardIndex, 1);
+        owner.armor = card;
+        game.log.push({ type: 'equipment_equipped', playerId: player.id, cardId: card.id, slot: 'armor' });
+      }
       if (card.kind === 'steal') {
         const target = game.players.find(p => p.id === played.targetId);
         if (target?.hand.length) {
@@ -219,7 +234,7 @@ export class RoomManager {
       players: room.players.map(p => {
         const gp = game?.players.find(x => x.id === p.id);
         return { id: p.id, name: p.name, host: p.id === room.hostId, connected: p.connected,
-          hp: gp?.hp ?? 4, alive: gp?.alive ?? true, handCount: gp?.hand.length ?? 0,
+          hp: gp?.hp ?? 4, alive: gp?.alive ?? true, armor: gp?.armor?.name ?? null, handCount: gp?.hand.length ?? 0,
           hand: p.id === viewerId ? (gp?.hand ?? []) : undefined, role: p.id === viewerId ? (gp?.role ?? null) : undefined };
       }),
       currentPlayerId: game?.players[game.currentPlayerIndex]?.id ?? null,
@@ -260,10 +275,10 @@ function playerCard(game, playerId, cardId) {
 function makeStarterDeck() {
   const deck = [];
   let id = 1;
-  const kinds = ['heal', 'dodge', 'attack', 'dodge', 'attack', 'draw2', 'steal', 'heal'];
-  for (let i = 0; i < 80; i++) {
+  const kinds = ['heal', 'dodge', 'attack', 'dodge', 'attack', 'draw2', 'steal', 'heal', 'armor'];
+  for (let i = 0; i < 90; i++) {
     const kind = kinds[i % kinds.length];
-    const name = kind === 'heal' ? '桃' : kind === 'attack' ? '杀' : kind === 'dodge' ? '闪' : kind === 'draw2' ? '摸二张' : '顺手牵羊';
+    const name = kind === 'heal' ? '桃' : kind === 'attack' ? '杀' : kind === 'dodge' ? '闪' : kind === 'draw2' ? '摸二张' : kind === 'steal' ? '顺手牵羊' : '护心镜';
     deck.push({ id: 'c' + id++, name, kind });
   }
   return deck;
