@@ -51,3 +51,18 @@ test('stale socket close does not disconnect a reconnected player', () => {
   assert.equal(room.players[0].connected, true);
   assert.equal(room.players[0].socket, newSocket);
 });
+
+test('a player can use at most one attack per turn', () => {
+  const { manager, room, host, guest } = startedRoom();
+  const hostState = room.game.players.find(p => p.id === host.id);
+  hostState.hand.push({ id: 'extra-attack', name: '杀', kind: 'attack' });
+  manager.act(host.token, { type: 'play_card', cardId: 'c3', targetId: guest.id });
+  assert.throws(
+    () => manager.act(host.token, { type: 'play_card', cardId: 'extra-attack', targetId: guest.id }),
+    /本回合已经使用过/
+  );
+  manager.act(host.token, { type: 'end_turn' });
+  manager.act(guest.token, { type: 'end_turn' });
+  manager.act(host.token, { type: 'play_card', cardId: 'extra-attack', targetId: guest.id });
+  assert.equal(room.game.players.find(p => p.id === guest.id).hp, 2);
+});
