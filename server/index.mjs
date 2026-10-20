@@ -29,13 +29,27 @@ function sendError(socket, message) {
 
 wss.on('connection', socket => {
   let token = null;
+  let rateWindowStart = Date.now();
+  let messageCount = 0;
   socket.on('message', raw => {
+    const now = Date.now();
+    if (now - rateWindowStart >= 10_000) {
+      rateWindowStart = now;
+      messageCount = 0;
+    }
+    messageCount += 1;
+    if (messageCount > 60) {
+      sendError(socket, '消息过于频繁，请稍后再试');
+      socket.close(1008, 'rate limit');
+      return;
+    }
     let message;
     try { message = JSON.parse(raw.toString()); }
     catch { sendError(socket, '消息必须是有效 JSON'); return; }
     try {
       if (!message || typeof message.type !== 'string') throw new Error('缺少消息类型');
       if (message.type === 'create_room') {
+        if (token) throw new Error('此连接已经加入房间，请先离开当前房间');
         const result = manager.create({ name: message.name, mode: message.mode, maxPlayers: message.maxPlayers, socket });
         token = result.player.token;
         send(socket, { type: 'welcome', token, playerId: result.player.id, state: manager.snapshot(result.room, result.player.id) });
@@ -43,6 +57,7 @@ wss.on('connection', socket => {
         return;
       }
       if (message.type === 'join_room') {
+        if (token) throw new Error('此连接已经加入房间，请先离开当前房间');
         const result = manager.join({ code: message.code, name: message.name, socket });
         token = result.player.token;
         send(socket, { type: 'welcome', token, playerId: result.player.id, state: manager.snapshot(result.room, result.player.id) });
@@ -50,6 +65,7 @@ wss.on('connection', socket => {
         return;
       }
       if (message.type === 'reconnect') {
+        if (token) throw new Error('此连接已经加入房间，请先离开当前房间');
         const result = manager.reconnect({ token: message.token, socket });
         token = result.player.token;
         send(socket, { type: 'welcome', token, playerId: result.player.id, state: manager.snapshot(result.room, result.player.id) });
