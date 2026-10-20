@@ -235,7 +235,7 @@ class MainActivity : Activity() {
         latestRoomState = state
         val root = column()
         root.addView(text("在线房间 · " + state.optString("code"), 23f, true))
-        root.addView(text("模式：" + state.optString("mode") + "    状态：" + state.optString("status"), 15f))
+        root.addView(text("模式：" + modeLabel(state.optString("mode")) + "    状态：" + state.optString("status"), 15f))
         val players = state.optJSONArray("players")
         val playerLines = mutableListOf<String>()
         if (players != null) {
@@ -363,13 +363,23 @@ class MainActivity : Activity() {
         "loyalist" -> "忠臣"
         "rebel" -> "反贼"
         "renegade" -> "内奸"
+        "landlord" -> "地主"
+        "peasant" -> "农民"
         else -> role
+    }
+
+    private fun modeLabel(mode: String): String = when (mode) {
+        "duel_lord" -> "斗地主"
+        "double_general" -> "双将"
+        else -> "身份模式"
     }
 
     private fun sideLabel(side: String): String = when (side) {
         "lord" -> "主公阵营"
         "rebels" -> "反贼阵营"
         "renegade" -> "内奸"
+        "landlord" -> "地主阵营"
+        "peasants" -> "农民阵营"
         else -> "尚未判定"
     }
 
