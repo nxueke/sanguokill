@@ -69,7 +69,19 @@ export function drawCards(state, playerId, count = 1) {
   const player = requirePlayer(state, playerId);
   if (!player.alive) throw new Error('Dead players cannot draw cards');
   const drawn = [];
-  while (drawn.length < count && state.deck.length) drawn.push(state.deck.shift());
+  while (drawn.length < count) {
+    if (!state.deck.length && state.discard.length) {
+      state.deck = [...state.discard];
+      state.discard = [];
+      for (let i = state.deck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [state.deck[i], state.deck[j]] = [state.deck[j], state.deck[i]];
+      }
+      state.log.push({ type: 'discard_reshuffled', count: state.deck.length });
+    }
+    if (!state.deck.length) break;
+    drawn.push(state.deck.shift());
+  }
   player.hand.push(...drawn);
   state.log.push({ type: 'cards_drawn', playerId, count: drawn.length });
   return drawn;
