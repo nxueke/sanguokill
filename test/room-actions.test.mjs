@@ -43,7 +43,7 @@ test('attack card requires a target and applies server-side damage', () => {
 });
 
 test('dodge cannot be proactively played and non-current player cannot act', () => {
-  const { manager, host, guest } = startedRoom();
+  const { manager, room, host, guest } = startedRoom();
   assert.throws(() => manager.act(host.token, { type: 'play_card', cardId: cardIdOfKind(room, host.id, 'dodge') }), /只能在受到/);
   assert.throws(() => manager.act(guest.token, { type: 'draw' }), /还没轮到你/);
 });
