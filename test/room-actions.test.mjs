@@ -2,11 +2,16 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { RoomManager } from '../server/rooms.mjs';
 
+function cardIdOfKind(room, playerId, kind) {
+  const player = room.game.players.find(p => p.id === playerId);
+  const card = player.hand.find(c => c.kind === kind);
+  if (!card) throw new Error(`Test fixture expected a ${kind} card in the starting hand`);
+  return card.id;
+}
+
 function attackCardId(room, playerId) {
   const player = room.game.players.find(p => p.id === playerId);
-  const card = player.hand.find(c => c.kind === 'attack');
-  if (!card) throw new Error('Test fixture expected an attack card in the starting hand');
-  return card.id;
+  return cardIdOfKind(room, playerId, 'attack');
 }
 
 function startedRoom() {
@@ -19,6 +24,9 @@ function startedRoom() {
   const hostState = room.game.players.find(p => p.id === host.id);
   if (!hostState.hand.some(card => card.kind === 'attack')) {
     hostState.hand.push({ id: 'fixture-attack', name: '杀', kind: 'attack' });
+  }
+  if (!hostState.hand.some(card => card.kind === 'dodge')) {
+    hostState.hand.push({ id: 'fixture-dodge', name: '闪', kind: 'dodge' });
   }
   return { manager, room, host, guest };
 }
@@ -36,7 +44,7 @@ test('attack card requires a target and applies server-side damage', () => {
 
 test('dodge cannot be proactively played and non-current player cannot act', () => {
   const { manager, host, guest } = startedRoom();
-  assert.throws(() => manager.act(host.token, { type: 'play_card', cardId: 'c2' }), /只能在受到/);
+  assert.throws(() => manager.act(host.token, { type: 'play_card', cardId: cardIdOfKind(room, host.id, 'dodge') }), /只能在受到/);
   assert.throws(() => manager.act(guest.token, { type: 'draw' }), /还没轮到你/);
 });
 
