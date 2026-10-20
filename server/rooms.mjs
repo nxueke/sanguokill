@@ -55,9 +55,10 @@ export class RoomManager {
   leave(token) {
     const session = this.sessions.get(token);
     if (!session) return null;
-    this.sessions.delete(token);
     const room = this.rooms.get(session.roomCode);
-    if (!room) return null;
+    if (!room) { this.sessions.delete(token); return null; }
+    if (room.status === 'playing') throw new Error('对局进行中，暂不支持主动离开；可断开连接后重连');
+    this.sessions.delete(token);
     const index = room.players.findIndex(p => p.id === session.playerId);
     if (index >= 0) {
       const [player] = room.players.splice(index, 1);
@@ -68,12 +69,13 @@ export class RoomManager {
     return room;
   }
 
-  disconnect(token) {
+  disconnect(token, socket = null) {
     const session = this.sessions.get(token);
     if (!session) return null;
     const room = this.rooms.get(session.roomCode);
     const player = room?.players.find(p => p.id === session.playerId);
-    if (player) {
+    // A stale socket closing after reconnection must not disconnect the new socket.
+    if (player && (socket === null || player.socket === socket)) {
       player.connected = false;
       player.socket = null;
       player.disconnectedAt = this.now();
@@ -93,6 +95,7 @@ export class RoomManager {
     });
     startGame(state);
     state.players.forEach(p => drawCards(state, p.id, 4));
+    state.drawnThisTurn = false;
     room.game = state;
     room.status = 'playing';
     return room;
@@ -102,20 +105,33 @@ export class RoomManager {
     const { room, player } = this.#session(token);
     if (room.status !== 'playing' || !room.game) throw new Error('对局尚未开始');
     if (action?.type === 'play_card') {
+      const current = room.game.players[room.game.currentPlayerIndex];
+      if (current?.id !== player.id) throw new Error('还没轮到你');
+      const heldCard = playerCard(room.game, player.id, action.cardId);
+      if (heldCard.kind === 'dodge') throw new Error('【闪】只能在受到【杀】时响应，暂不能主动打出');
+      if (heldCard.kind === 'attack' && !action.targetId) throw new Error('使用【杀】必须选择目标');
+      if (heldCard.kind !== 'attack' && action.targetId && action.targetId !== player.id) throw new Error('该牌不能指定其他玩家为目标');
       const played = playCard(room.game, { playerId: player.id, cardId: action.cardId, targetId: action.targetId ?? null });
       const card = played.card;
-      if (card.kind === 'attack' && played.targetId) applyDamage(room.game, { sourceId: player.id, targetId: played.targetId, amount: 1 });
-      if (card.kind === 'heal') { const target = room.game.players.find(p => p.id === player.id); target.hp = Math.min(target.hp + 1, target.maxHp); }
+      if (card.kind === 'attack') applyDamage(room.game, { sourceId: player.id, targetId: played.targetId, amount: 1 });
+      if (card.kind === 'heal') {
+        const target = room.game.players.find(p => p.id === player.id);
+        target.hp = Math.min(target.hp + 1, target.maxHp);
+        room.game.log.push({ type: 'healed', playerId: player.id, amount: target.hp === target.maxHp ? 1 : 0 });
+      }
       return room;
     }
     if (action?.type === 'draw') {
       if (room.game.players[room.game.currentPlayerIndex]?.id !== player.id) throw new Error('还没轮到你');
-      drawCards(room.game, player.id, 1);
+      if (room.game.drawnThisTurn) throw new Error('本回合已经摸过牌');
+      const drawn = drawCards(room.game, player.id, 1);
+      room.game.drawnThisTurn = true;
       return room;
     }
     if (action?.type === 'end_turn') {
       if (room.game.players[room.game.currentPlayerIndex]?.id !== player.id) throw new Error('还没轮到你');
       advanceTurn(room.game);
+      room.game.drawnThisTurn = false;
       return room;
     }
     throw new Error('未知操作类型');
@@ -157,6 +173,13 @@ export class RoomManager {
     do { code = roomCode(); } while (this.rooms.has(code));
     return code;
   }
+}
+
+function playerCard(game, playerId, cardId) {
+  const player = game.players.find(p => p.id === playerId);
+  const card = player?.hand.find(c => c.id === cardId);
+  if (!card) throw new Error('手牌中没有这张牌');
+  return card;
 }
 
 function makeStarterDeck() {
