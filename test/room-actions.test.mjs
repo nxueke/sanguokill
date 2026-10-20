@@ -214,3 +214,17 @@ test('Wu general draws three cards from draw-two and Swift Arrow deals two damag
   manager.act(guest.token, { type: 'respond', response: 'pass' });
   assert.equal(guestState.hp, 2);
 });
+
+test('original Wine card boosts the next attack by one damage', () => {
+  const { manager, room, host, guest } = startedRoom();
+  const hostState = room.game.players.find(p => p.id === host.id);
+  const guestState = room.game.players.find(p => p.id === guest.id);
+  hostState.hand.push({ id: 'wine-test', name: '酒', kind: 'wine' });
+  manager.act(host.token, { type: 'play_card', cardId: 'wine-test' });
+  assert.equal(hostState.marks.wineBoost, true);
+  manager.act(host.token, { type: 'play_card', cardId: attackCardId(room, host.id), targetId: guest.id });
+  assert.equal(room.game.pendingResponse.damage, 2);
+  manager.act(guest.token, { type: 'respond', response: 'pass' });
+  assert.equal(guestState.hp, 2);
+  assert.equal(hostState.marks.wineBoost, false);
+});
