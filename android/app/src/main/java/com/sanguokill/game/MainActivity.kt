@@ -278,7 +278,7 @@ class MainActivity : Activity() {
             clipboard.setPrimaryClip(android.content.ClipData.newPlainText("房间码", state.optString("code")))
             showToast("房间码已复制。")
         })
-        if (state.optString("status") == "waiting" && state.optString("mode") == "duel_lord" && !state.optBoolean("biddingComplete")) {
+        if (state.optString("status") == "waiting" && state.optString("mode") == "duel_lord" && (players?.length() ?: 0) == 3 && !state.optBoolean("biddingComplete")) {
             root.addView(text("斗地主叫分：每位玩家选择 0～3 分；全部提交且至少一人叫分后确定地主。全员不叫可重新叫分。", 14f))
             root.addView(rowButtonGroup(listOf("不叫地主" to 0, "叫 1 分" to 1, "叫 2 分" to 2, "叫 3 分" to 3)) { bid ->
                 sendOnlineMessage(JSONObject().put("type", "bid_landlord").put("bid", bid))
