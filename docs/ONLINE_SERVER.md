@@ -27,4 +27,4 @@ The server listens on port 3000 by default. The Android emulator can usually rea
 
 ## Current limitations
 
-This is a prototype. It has basic identity victory checks, a three-player landlord role variant, attack/dodge response, Peach rescue, draw-two and steal cards, and one-hit armor. It does not yet implement the full official card catalogue, landlord bidding and general selection, double-general selection/skills, response timeouts, persistent rooms, rate limiting, or comprehensive abuse protection.
+This is a prototype. It has basic identity victory checks, a three-player landlord role variant, attack/dodge response, Peach rescue, draw-two and steal cards, and one-hit armor. It does not yet implement the full official card catalogue, landlord bidding and full official rules, response timeouts, persistent rooms, rate limiting, or comprehensive abuse protection.
