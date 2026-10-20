@@ -292,6 +292,8 @@ export class RoomManager {
     }
     if (action?.type === 'end_turn') {
       if (game.players[game.currentPlayerIndex]?.id !== player.id) throw new Error('还没轮到你');
+      const endingPlayer = game.players[game.currentPlayerIndex];
+      if (endingPlayer?.marks) endingPlayer.marks.wineBoost = false;
       advanceTurn(game);
       game.drawnThisTurn = false;
       game.attacksUsedThisTurn = 0;
