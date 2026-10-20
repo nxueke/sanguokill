@@ -90,6 +90,7 @@ export class RoomManager {
     if (room.status !== 'waiting' || room.players.length !== 3) throw new Error('房间需要正好 3 名玩家且尚未开始');
     if (room.assignedRoles) throw new Error('叫地主已结束，不能再更改叫分');
     if (!Number.isInteger(bid) || bid < 0 || bid > 3) throw new Error('叫分必须为 0～3');
+    if (Object.hasOwn(room.bids, player.id)) throw new Error('本轮你已经叫过分，等待其他玩家完成叫分');
     room.bids[player.id] = bid;
     const allBid = room.players.every(p => Number.isInteger(room.bids[p.id]));
     if (allBid) {
