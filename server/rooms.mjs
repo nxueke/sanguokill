@@ -20,7 +20,7 @@ export class RoomManager {
     if (!Number.isInteger(maxPlayers) || maxPlayers < 3 || maxPlayers > 10) throw new Error('房间人数必须为 3～10 人');
     const code = this.#newCode();
     const player = this.#newPlayer(name, socket, true);
-    const room = { code, mode, maxPlayers, hostId: player.id, status: 'waiting', players: [player], game: null, createdAt: this.now() };
+    const room = { code, mode, maxPlayers, hostId: player.id, status: 'waiting', players: [player], game: null, assignedRoles: null, createdAt: this.now() };
     this.rooms.set(code, room);
     this.sessions.set(player.token, { roomCode: code, playerId: player.id });
     return { room, player };
@@ -33,6 +33,7 @@ export class RoomManager {
     if (room.players.length >= room.maxPlayers) throw new Error('房间已满');
     const player = this.#newPlayer(name, socket, false);
     room.players.push(player);
+    if (room.mode === GAME_MODES.DUEL_LORD && room.players.length === 3) room.assignedRoles = assignDuelLordRoles(3);
     this.sessions.set(player.token, { roomCode: room.code, playerId: player.id });
     return { room, player };
   }
@@ -62,6 +63,7 @@ export class RoomManager {
     const index = room.players.findIndex(p => p.id === session.playerId);
     if (index >= 0) {
       const [player] = room.players.splice(index, 1);
+      if (room.mode === GAME_MODES.DUEL_LORD) room.assignedRoles = room.players.length === 3 ? assignDuelLordRoles(3) : null;
       if (player.socket) player.socket = null;
       if (room.hostId === player.id && room.players.length) room.hostId = room.players[0].id;
     }
@@ -86,7 +88,11 @@ export class RoomManager {
   selectGenerals(token, generalIds) {
     const { room, player } = this.#session(token);
     if (room.status !== 'waiting') throw new Error('对局开始后不能更换武将');
-    if (room.mode !== GAME_MODES.DOUBLE_GENERAL) throw new Error('当前模式不需要双将选择');
+    if (![GAME_MODES.DOUBLE_GENERAL, GAME_MODES.DUEL_LORD].includes(room.mode)) throw new Error('当前模式不需要双将选择');
+    if (room.mode === GAME_MODES.DUEL_LORD) {
+      const seat = room.players.findIndex(p => p.id === player.id);
+      if (room.assignedRoles?.[seat] !== 'landlord') throw new Error('只有地主可以选择双将');
+    }
     if (!Array.isArray(generalIds) || generalIds.length !== 2 || generalIds[0] === generalIds[1]) {
       throw new Error('必须选择两名不同的武将');
     }
@@ -102,14 +108,18 @@ export class RoomManager {
     if (room.players.length < 3) throw new Error('至少需要 3 名玩家才能开始');
     if (room.mode === GAME_MODES.DUEL_LORD && room.players.length !== 3) throw new Error('斗地主模式目前要求正好 3 名玩家');
     if (room.mode === GAME_MODES.DOUBLE_GENERAL && room.players.some(p => p.selectedGenerals.length !== 2)) throw new Error('双将模式要求每名玩家先选择两名武将');
+    if (room.mode === GAME_MODES.DUEL_LORD && !room.players.some((p, i) => room.assignedRoles?.[i] === 'landlord' && p.selectedGenerals.length === 2)) throw new Error('地主必须先选择两名武将');
     const state = createGameState({ playerCount: room.players.length, mode: room.mode, deck: makeStarterDeck() });
     state.players.forEach((p, i) => {
       p.id = room.players[i].id;
       p.name = room.players[i].name;
     });
-    startGame(state, { roles: room.mode === GAME_MODES.DUEL_LORD ? assignDuelLordRoles(room.players.length) : assignIdentityRoles(room.players.length) });
-    if (room.mode === GAME_MODES.DOUBLE_GENERAL) {
+    const roles = room.mode === GAME_MODES.DUEL_LORD ? (room.assignedRoles ?? assignDuelLordRoles(room.players.length)) : assignIdentityRoles(room.players.length);
+    startGame(state, { roles });
+    if (room.mode === GAME_MODES.DOUBLE_GENERAL || room.mode === GAME_MODES.DUEL_LORD) {
       state.players.forEach((p, i) => {
+        const isEligible = room.mode === GAME_MODES.DOUBLE_GENERAL || roles[i] === 'landlord';
+        if (!isEligible) return;
         const selected = room.players[i].selectedGenerals.map(id => GENERAL_CATALOG.find(g => g.id === id));
         p.generals = selected.map(g => g.name);
         p.maxHp = Math.max(3, Math.floor(selected.reduce((sum, g) => sum + g.maxHp, 0) / 2));
@@ -252,11 +262,11 @@ export class RoomManager {
     return {
       code: room.code, mode: room.mode, status: game?.status === 'finished' ? 'finished' : room.status, maxPlayers: room.maxPlayers,
       hostId: room.hostId,
-      players: room.players.map(p => {
+      players: room.players.map((p, roomIndex) => {
         const gp = game?.players.find(x => x.id === p.id);
         return { id: p.id, name: p.name, host: p.id === room.hostId, connected: p.connected,
           hp: gp?.hp ?? 4, maxHp: gp?.maxHp ?? 4, alive: gp?.alive ?? true, armor: gp?.armor?.name ?? null, generals: gp?.generals?.length ? gp.generals : p.selectedGenerals.map(id => GENERAL_CATALOG.find(g => g.id === id)?.name ?? id), handCount: gp?.hand.length ?? 0,
-          hand: p.id === viewerId ? (gp?.hand ?? []) : undefined, role: p.id === viewerId ? (gp?.role ?? null) : undefined };
+          hand: p.id === viewerId ? (gp?.hand ?? []) : undefined, role: p.id === viewerId ? (gp?.role ?? room.assignedRoles?.[roomIndex] ?? null) : undefined };
       }),
       currentPlayerId: game?.players[game.currentPlayerIndex]?.id ?? null,
       turnNumber: game?.turnNumber ?? 0, winner: game?.winner ?? null, winningSide: game?.winningSide ?? null,
