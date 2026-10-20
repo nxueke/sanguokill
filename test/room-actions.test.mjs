@@ -15,6 +15,11 @@ function startedRoom() {
   const guest = manager.join({ code: room.code, name: 'Guest' }).player;
   manager.join({ code: room.code, name: 'Third' });
   manager.start(host.token);
+  // Keep action tests deterministic even though the production deck is shuffled.
+  const hostState = room.game.players.find(p => p.id === host.id);
+  if (!hostState.hand.some(card => card.kind === 'attack')) {
+    hostState.hand.push({ id: 'fixture-attack', name: '杀', kind: 'attack' });
+  }
   return { manager, room, host, guest };
 }
 
