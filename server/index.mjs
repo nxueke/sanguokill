@@ -4,6 +4,8 @@ import { RoomManager } from './rooms.mjs';
 
 const port = Number(process.env.PORT ?? 3000);
 const manager = new RoomManager();
+const responseTimeoutMs = Math.max(5_000, Number(process.env.RESPONSE_TIMEOUT_MS ?? 30_000));
+const responseTimers = new Map();
 const server = createServer((req, res) => {
   if (req.url === '/health' && req.method === 'GET') {
     res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
@@ -22,6 +24,40 @@ function broadcast(room, event = 'room_state') {
   for (const player of room.players) {
     if (player.socket) send(player.socket, { type: event, state: manager.snapshot(room, player.id) });
   }
+  scheduleResponseTimeout(room);
+}
+
+function scheduleResponseTimeout(room) {
+  const pending = room.game?.pendingResponse;
+  const key = pending
+    ? [pending.type, pending.targetId, pending.type === 'rescue' ? pending.order[pending.cursor] : pending.targetId, pending.cursor ?? 0].join(':')
+    : null;
+  const current = responseTimers.get(room.code);
+  if (current?.key === key) return;
+  if (current) clearTimeout(current.timer);
+  responseTimers.delete(room.code);
+  if (!key || room.game?.status !== 'playing') return;
+  const timer = setTimeout(() => {
+    responseTimers.delete(room.code);
+    const liveRoom = manager.rooms.get(room.code);
+    const livePending = liveRoom?.game?.pendingResponse;
+    if (!liveRoom || !livePending) return;
+    const expectedId = livePending.type === 'rescue'
+      ? livePending.order[livePending.cursor]
+      : livePending.targetId;
+    const expectedPlayer = liveRoom.players.find(p => p.id === expectedId);
+    if (!expectedPlayer) return;
+    try {
+      manager.act(expectedPlayer.token, livePending.type === 'rescue'
+        ? { type: 'rescue', response: 'pass' }
+        : { type: 'respond', response: 'pass' });
+      broadcast(liveRoom);
+    } catch (error) {
+      sendError(expectedPlayer.socket, error?.message ?? '响应超时处理失败');
+    }
+  }, responseTimeoutMs);
+  timer.unref?.();
+  responseTimers.set(room.code, { key, timer });
 }
 function sendError(socket, message) {
   send(socket, { type: 'error', message: String(message).slice(0, 200) });
