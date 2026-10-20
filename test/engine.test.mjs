@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createGameState, startGame, drawCards, playCard, applyDamage, advanceTurn, GAME_MODES } from '../server/engine.mjs';
+import { createGameState, startGame, drawCards, playCard, applyDamage, advanceTurn, GAME_MODES, IDENTITY_ROLES, assignIdentityRoles } from '../server/engine.mjs';
 
 test('accepts player counts 3 through 10 and rejects out-of-range counts', () => {
   for (let n = 3; n <= 10; n++) assert.equal(createGameState({ playerCount: n }).players.length, n);
@@ -48,4 +48,48 @@ test('turn advancement skips eliminated players', () => {
   startGame(game);
   applyDamage(game, { targetId: 'p2', amount: 4 });
   assert.equal(advanceTurn(game).id, 'p3');
+});
+
+test('identity role distribution is valid for 3 through 10 players', () => {
+  const expected = {
+    3: { lord: 1, loyalist: 0, rebel: 1, renegade: 1 },
+    4: { lord: 1, loyalist: 1, rebel: 2, renegade: 0 },
+    5: { lord: 1, loyalist: 1, rebel: 2, renegade: 1 },
+    6: { lord: 1, loyalist: 2, rebel: 2, renegade: 1 },
+    7: { lord: 1, loyalist: 2, rebel: 3, renegade: 1 },
+    8: { lord: 1, loyalist: 2, rebel: 4, renegade: 1 },
+    9: { lord: 1, loyalist: 3, rebel: 4, renegade: 1 },
+    10: { lord: 1, loyalist: 3, rebel: 5, renegade: 1 },
+  };
+  for (let n = 3; n <= 10; n++) {
+    const roles = assignIdentityRoles(n, () => 0.5);
+    assert.equal(roles.length, n);
+    assert.equal(roles[0], IDENTITY_ROLES.LORD);
+    const actual = Object.fromEntries(Object.values(IDENTITY_ROLES).map(role => [role, roles.filter(r => r === role).length]));
+    assert.deepEqual(actual, expected[n]);
+  }
+  assert.throws(() => assignIdentityRoles(2), /3 to 10/);
+});
+
+test('identity victory is based on the role team, not simply last player alive', () => {
+  const game = createGameState({ playerCount: 4 });
+  startGame(game, { roles: ['lord', 'loyalist', 'rebel', 'rebel'] });
+  applyDamage(game, { targetId: 'p3', amount: 4 });
+  applyDamage(game, { targetId: 'p4', amount: 4 });
+  assert.equal(game.status, 'finished');
+  assert.equal(game.winningSide, 'lord');
+  assert.equal(game.winner, 'p1');
+});
+
+test('identity game continues when only lord and renegade remain', () => {
+  const game = createGameState({ playerCount: 5 });
+  startGame(game, { roles: ['lord', 'loyalist', 'rebel', 'rebel', 'renegade'] });
+  applyDamage(game, { targetId: 'p2', amount: 4 });
+  applyDamage(game, { targetId: 'p3', amount: 4 });
+  applyDamage(game, { targetId: 'p4', amount: 4 });
+  assert.equal(game.status, 'playing');
+  assert.equal(game.winner, null);
+  applyDamage(game, { targetId: 'p1', amount: 4 });
+  assert.equal(game.status, 'finished');
+  assert.equal(game.winningSide, 'renegade');
 });
