@@ -16,6 +16,9 @@ test('attack card requires a target and applies server-side damage', () => {
   assert.throws(() => manager.act(host.token, { type: 'play_card', cardId: 'c3' }), /必须选择目标/);
   assert.equal(room.game.players.find(p => p.id === host.id).hand.some(c => c.id === 'c3'), true);
   manager.act(host.token, { type: 'play_card', cardId: 'c3', targetId: guest.id });
+  assert.equal(room.game.players.find(p => p.id === guest.id).hp, 4);
+  assert.equal(room.game.pendingResponse.type, 'dodge');
+  manager.act(guest.token, { type: 'respond', response: 'pass' });
   assert.equal(room.game.players.find(p => p.id === guest.id).hp, 3);
 });
 
@@ -66,4 +69,44 @@ test('a player can use at most one attack per turn', () => {
   manager.act(room.players[2].token, { type: 'end_turn' });
   manager.act(host.token, { type: 'play_card', cardId: 'extra-attack', targetId: guest.id });
   assert.equal(room.game.players.find(p => p.id === guest.id).hp, 2);
+});
+
+test('target can evade an attack with dodge', () => {
+  const { manager, room, host, guest } = startedRoom();
+  room.game.players.find(p => p.id === guest.id).hand.push({ id: 'guest-dodge', name: '闪', kind: 'dodge' });
+  manager.act(host.token, { type: 'play_card', cardId: 'c3', targetId: guest.id });
+  assert.throws(() => manager.act(host.token, { type: 'draw' }), /等待受/);
+  manager.act(guest.token, { type: 'respond', response: 'dodge', cardId: 'guest-dodge' });
+  assert.equal(room.game.players.find(p => p.id === guest.id).hp, 4);
+  assert.equal(room.game.pendingResponse, null);
+});
+
+test('a player at zero HP can be rescued with peach', () => {
+  const { manager, room, host, guest } = startedRoom();
+  const target = room.game.players.find(p => p.id === guest.id);
+  target.hp = 1;
+  target.hand.push({ id: 'rescue-peach', name: '桃', kind: 'heal' });
+  manager.act(host.token, { type: 'play_card', cardId: 'c3', targetId: guest.id });
+  manager.act(guest.token, { type: 'respond', response: 'pass' });
+  assert.equal(target.hp, 0);
+  assert.equal(target.alive, true);
+  assert.equal(room.game.pendingResponse.type, 'rescue');
+  manager.act(guest.token, { type: 'rescue', response: 'save', cardId: 'rescue-peach' });
+  assert.equal(target.hp, 1);
+  assert.equal(target.alive, true);
+  assert.equal(room.game.pendingResponse, null);
+});
+
+test('a player dies only after all rescue seats pass', () => {
+  const { manager, room, host, guest } = startedRoom();
+  const target = room.game.players.find(p => p.id === guest.id);
+  target.hp = 1;
+  manager.act(host.token, { type: 'play_card', cardId: 'c3', targetId: guest.id });
+  manager.act(guest.token, { type: 'respond', response: 'pass' });
+  assert.equal(target.alive, true);
+  manager.act(guest.token, { type: 'rescue', response: 'pass' });
+  manager.act(host.token, { type: 'rescue', response: 'pass' });
+  manager.act(room.players[2].token, { type: 'rescue', response: 'pass' });
+  assert.equal(target.alive, false);
+  assert.equal(room.game.pendingResponse, null);
 });
