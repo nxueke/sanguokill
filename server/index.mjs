@@ -63,6 +63,11 @@ wss.on('connection', socket => {
         if (room) broadcast(room);
         return;
       }
+      if (message.type === 'select_generals') {
+        const room = manager.selectGenerals(token, message.generals);
+        broadcast(room);
+        return;
+      }
       if (message.type === 'start_game') {
         const room = manager.start(token);
         broadcast(room);
