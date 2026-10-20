@@ -8,6 +8,8 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
+import android.widget.Spinner
+import android.widget.ArrayAdapter
 import android.widget.TextView
 import android.widget.Toast
 import okhttp3.OkHttpClient
@@ -29,6 +31,7 @@ class MainActivity : Activity() {
     private lateinit var playerNameInput: EditText
     private lateinit var roomCodeInput: EditText
     private lateinit var maxPlayersInput: EditText
+    private lateinit var modeInput: Spinner
     private val cards = mutableListOf<GameCard>()
     private val log = mutableListOf<String>()
     private val httpClient = OkHttpClient.Builder().readTimeout(0, TimeUnit.MILLISECONDS).build()
@@ -42,6 +45,7 @@ class MainActivity : Activity() {
     private var playerNameValue = "玩家"
     private var roomCodeValue = ""
     private var maxPlayersValue = "3"
+    private var modeValue = "standard"
     private var hp = 4
     private var opponentHp = 4
     private var turn = 1
