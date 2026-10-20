@@ -186,3 +186,19 @@ test('Healer general increases Peach healing and Iron Wall blocks one attack', (
   assert.equal(guestState.hp, 4);
   assert.equal(guestState.marks.ironWallUsed, true);
 });
+
+test('Wu general draws three cards from draw-two and Swift Arrow deals two damage', () => {
+  const { manager, room, host, guest } = startedRoom();
+  const hostState = room.game.players.find(p => p.id === host.id);
+  const guestState = room.game.players.find(p => p.id === guest.id);
+  hostState.generalIds = ['wu_sage'];
+  const before = hostState.hand.length;
+  hostState.hand.push({ id: 'wu-draw-two', name: '摸二张', kind: 'draw2' });
+  manager.act(host.token, { type: 'play_card', cardId: 'wu-draw-two' });
+  assert.equal(hostState.hand.length, before + 3);
+  hostState.generalIds = ['swift_arrow'];
+  hostState.hand.push({ id: 'swift-attack', name: '杀', kind: 'attack' });
+  manager.act(host.token, { type: 'play_card', cardId: 'swift-attack', targetId: guest.id });
+  manager.act(guest.token, { type: 'respond', response: 'pass' });
+  assert.equal(guestState.hp, 2);
+});
