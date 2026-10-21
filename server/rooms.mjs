@@ -376,8 +376,25 @@ export class RoomManager {
       game.drawnThisTurn = true;
       return room;
     }
+    if (action?.type === 'discard') {
+      if (game.players[game.currentPlayerIndex]?.id !== player.id) throw new Error('还没轮到你');
+      const actor = game.players.find(p => p.id === player.id);
+      const required = Math.max(0, actor.hand.length - actor.hp);
+      if (!Array.isArray(action.cardIds) || action.cardIds.length !== required || new Set(action.cardIds).size !== required) {
+        throw new Error(`弃牌阶段必须恰好选择 ${required} 张不同的手牌`);
+      }
+      if (action.cardIds.some(id => !actor.hand.some(card => card.id === id))) throw new Error('弃牌列表包含不属于你的手牌');
+      for (const id of action.cardIds) {
+        const index = actor.hand.findIndex(card => card.id === id);
+        game.discard.push(actor.hand.splice(index, 1)[0]);
+      }
+      if (required > 0) game.log.push({ type: 'hand_limit_discard', playerId: player.id, count: required });
+      return room;
+    }
     if (action?.type === 'end_turn') {
       if (game.players[game.currentPlayerIndex]?.id !== player.id) throw new Error('还没轮到你');
+      const endingState = game.players[game.currentPlayerIndex];
+      if (endingState.hand.length > endingState.hp) throw new Error('结束回合前必须弃置超出体力值的手牌');
       const endingPlayer = game.players[game.currentPlayerIndex];
       if (endingPlayer?.marks) {
         endingPlayer.marks.wineBoost = false;
