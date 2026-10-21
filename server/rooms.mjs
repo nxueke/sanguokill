@@ -460,7 +460,7 @@ export class RoomManager {
       }),
       currentPlayerId: game?.players[game.currentPlayerIndex]?.id ?? null,
       turnNumber: game?.turnNumber ?? 0, winner: game?.winner ?? null, winningSide: game?.winningSide ?? null,
-      pendingResponse: game?.pendingResponse ? { type: game.pendingResponse.type, targetId: game.pendingResponse.targetId, responsePlayerId: game.pendingResponse.type === 'rescue' ? game.pendingResponse.order[game.pendingResponse.cursor] : game.pendingResponse.type === 'duel' ? game.pendingResponse.responderId : game.pendingResponse.type === 'aoe' ? game.pendingResponse.order[game.pendingResponse.cursor] : game.pendingResponse.targetId } : null,
+      pendingResponse: game?.pendingResponse ? { type: game.pendingResponse.type, targetId: game.pendingResponse.targetId, response: game.pendingResponse.type === 'aoe' ? game.pendingResponse.response : undefined, responsePlayerId: game.pendingResponse.type === 'rescue' ? game.pendingResponse.order[game.pendingResponse.cursor] : game.pendingResponse.type === 'duel' ? game.pendingResponse.responderId : game.pendingResponse.type === 'aoe' ? game.pendingResponse.order[game.pendingResponse.cursor] : game.pendingResponse.targetId } : null,
       discardCount: game?.discard.length ?? 0,
       log: game?.log.slice(-20) ?? [],
     };
