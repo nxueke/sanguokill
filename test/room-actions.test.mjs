@@ -418,3 +418,19 @@ test('targeted cards reject self, missing, and dead targets without consuming th
   }), /目标不存在或已经阵亡/);
   assert.equal(hostState.hand.some(card => card.id === 'target-validation-steal'), true);
 });
+
+
+test('end turn enforces hand limit and validates exact discard selection', () => {
+  const { manager, room, host } = startedRoom();
+  const actor = room.game.players.find(p => p.id === host.id);
+  actor.hp = 2;
+  while (actor.hand.length < 4) actor.hand.push({ id: 'limit-' + actor.hand.length, name: '闪', kind: 'dodge' });
+  const discardIds = actor.hand.slice(0, actor.hand.length - actor.hp).map(card => card.id);
+  assert.throws(() => manager.act(host.token, { type: 'end_turn' }), /必须弃置超出体力值/);
+  assert.throws(() => manager.act(host.token, { type: 'discard', cardIds: discardIds.slice(0, 1) }), /恰好选择/);
+  assert.throws(() => manager.act(host.token, { type: 'discard', cardIds: ['not-in-hand', ...discardIds.slice(1)] }), /不属于你的手牌/);
+  manager.act(host.token, { type: 'discard', cardIds: discardIds });
+  assert.equal(actor.hand.length, actor.hp);
+  manager.act(host.token, { type: 'end_turn' });
+  assert.equal(room.game.currentPlayerIndex, 1);
+});
