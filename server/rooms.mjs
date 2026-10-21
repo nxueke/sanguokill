@@ -285,6 +285,14 @@ export class RoomManager {
         game.log.push({ type: 'healed', playerId: player.id, hp: target.hp });
       }
       if (card.kind === 'draw2') drawCards(game, player.id, actorState?.generalIds?.includes('wu_sage') ? 3 : 2);
+      if (card.kind === 'peach_garden') {
+        for (const target of game.players) {
+          if (!target.alive) continue;
+          const before = target.hp;
+          target.hp = Math.min(target.maxHp, target.hp + 1);
+          if (target.hp > before) game.log.push({ type: 'peach_garden_heal', playerId: player.id, targetId: target.id, hp: target.hp });
+        }
+      }
       if (card.kind === 'armor') {
         const owner = game.players.find(p => p.id === player.id);
         if (owner.armor) game.discard.push(owner.armor);
@@ -390,10 +398,10 @@ function playerCard(game, playerId, cardId) {
 function makeStarterDeck() {
   const deck = [];
   let id = 1;
-  const kinds = ['heal', 'dodge', 'attack', 'dodge', 'attack', 'draw2', 'steal', 'dismantle', 'duel', 'heal', 'armor', 'wine'];
+  const kinds = ['heal', 'dodge', 'attack', 'dodge', 'attack', 'draw2', 'steal', 'dismantle', 'duel', 'peach_garden', 'heal', 'armor', 'wine'];
   for (let i = 0; i < 90; i++) {
     const kind = kinds[i % kinds.length];
-    const name = kind === 'heal' ? '桃' : kind === 'attack' ? '杀' : kind === 'dodge' ? '闪' : kind === 'draw2' ? '无中生有' : kind === 'steal' ? '顺手牵羊' : kind === 'dismantle' ? '过河拆桥' : kind === 'duel' ? '决斗' : kind === 'wine' ? '酒' : '护心镜';
+    const name = kind === 'heal' ? '桃' : kind === 'attack' ? '杀' : kind === 'dodge' ? '闪' : kind === 'draw2' ? '无中生有' : kind === 'steal' ? '顺手牵羊' : kind === 'dismantle' ? '过河拆桥' : kind === 'duel' ? '决斗' : kind === 'peach_garden' ? '桃园结义' : kind === 'wine' ? '酒' : '护心镜';
     deck.push({ id: 'c' + id++, name, kind });
   }
   // Shuffle before dealing; a fixed repeating order leaks card identities and is unfair.
