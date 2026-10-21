@@ -357,3 +357,41 @@ test('Supply Shortage skips the target next draw and expires after use', () => {
   assert.equal(guestState.marks.skipDraw, false);
   assert.equal(room.game.log.some(entry => entry.type === 'supply_shortage_triggered' && entry.playerId === guest.id), true);
 });
+
+
+test('attack distance is enforced and Qinggang Sword extends attack range to two', () => {
+  const manager = new RoomManager();
+  const { room, player: host } = manager.create({ name: 'Host', maxPlayers: 4 });
+  const second = manager.join({ code: room.code, name: 'Second' }).player;
+  const third = manager.join({ code: room.code, name: 'Third' }).player;
+  manager.join({ code: room.code, name: 'Fourth' });
+  manager.start(host.token);
+  const hostState = room.game.players.find(p => p.id === host.id);
+  const thirdState = room.game.players.find(p => p.id === third.id);
+  hostState.hand.push({ id: 'range-test-attack', name: '杀', kind: 'attack' });
+  assert.throws(
+    () => manager.act(host.token, { type: 'play_card', cardId: 'range-test-attack', targetId: third.id }),
+    /超出【杀】的攻击距离/
+  );
+  hostState.hand.push({ id: 'range-test-sword', name: '青釭剑', kind: 'weapon' });
+  manager.act(host.token, { type: 'play_card', cardId: 'range-test-sword' });
+  manager.act(host.token, { type: 'play_card', cardId: 'range-test-attack', targetId: third.id });
+  assert.equal(room.game.pendingResponse.targetId, third.id);
+  assert.equal(thirdState.hp, 4);
+});
+
+test('Steal only targets a player at distance one', () => {
+  const manager = new RoomManager();
+  const { room, player: host } = manager.create({ name: 'Host', maxPlayers: 4 });
+  manager.join({ code: room.code, name: 'Second' });
+  const third = manager.join({ code: room.code, name: 'Third' }).player;
+  manager.join({ code: room.code, name: 'Fourth' });
+  manager.start(host.token);
+  const hostState = room.game.players.find(p => p.id === host.id);
+  hostState.hand.push({ id: 'range-test-steal', name: '顺手牵羊', kind: 'steal' });
+  assert.throws(
+    () => manager.act(host.token, { type: 'play_card', cardId: 'range-test-steal', targetId: third.id }),
+    /距离 1 以内/
+  );
+  assert.equal(hostState.hand.some(card => card.id === 'range-test-steal'), true);
+});
