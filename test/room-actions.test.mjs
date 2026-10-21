@@ -395,3 +395,26 @@ test('Steal only targets a player at distance one', () => {
   );
   assert.equal(hostState.hand.some(card => card.id === 'range-test-steal'), true);
 });
+
+
+test('targeted cards reject self, missing, and dead targets without consuming the card', () => {
+  const manager = new RoomManager();
+  const { room, player: host } = manager.create({ name: 'Host', maxPlayers: 3 });
+  const second = manager.join({ code: room.code, name: 'Second' }).player;
+  manager.join({ code: room.code, name: 'Third' });
+  manager.start(host.token);
+  const hostState = room.game.players.find(p => p.id === host.id);
+  const secondState = room.game.players.find(p => p.id === second.id);
+  hostState.hand.push({ id: 'target-validation-steal', name: '顺手牵羊', kind: 'steal' });
+  assert.throws(() => manager.act(host.token, {
+    type: 'play_card', cardId: 'target-validation-steal', targetId: host.id
+  }), /不能将此牌指定为自己/);
+  assert.throws(() => manager.act(host.token, {
+    type: 'play_card', cardId: 'target-validation-steal', targetId: 'missing-player'
+  }), /目标不存在或已经阵亡/);
+  secondState.alive = false;
+  assert.throws(() => manager.act(host.token, {
+    type: 'play_card', cardId: 'target-validation-steal', targetId: second.id
+  }), /目标不存在或已经阵亡/);
+  assert.equal(hostState.hand.some(card => card.id === 'target-validation-steal'), true);
+});
