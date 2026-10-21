@@ -331,6 +331,10 @@ export class RoomManager {
           game.discard.push(target.armor);
           target.armor = null;
           game.log.push({ type: 'armor_dismantled', playerId: player.id, targetId: target.id });
+        } else if (target?.weapon) {
+          game.discard.push(target.weapon);
+          target.weapon = null;
+          game.log.push({ type: 'weapon_dismantled', playerId: player.id, targetId: target.id });
         } else {
           game.log.push({ type: 'dismantle_empty', playerId: player.id, targetId: played.targetId });
         }
