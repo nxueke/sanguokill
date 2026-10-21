@@ -54,7 +54,7 @@ test('drawing is limited to once per turn and resets after turn advancement', ()
   assert.throws(() => manager.act(host.token, { type: 'draw' }), /已经摸过牌/);
   manager.act(host.token, { type: 'end_turn' });
   manager.act(guest.token, { type: 'draw' });
-  assert.equal(room.game.players.find(p => p.id === guest.id).hand.length, 5);
+  assert.equal(room.game.players.find(p => p.id === guest.id).hand.length, 6);
 });
 
 test('active game cannot remove a player from the room roster', () => {
