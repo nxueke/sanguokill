@@ -243,11 +243,15 @@ export class RoomManager {
         if (action?.type !== 'rescue' || !['save', 'pass'].includes(action.response)) throw new Error('请使用【桃】救援或选择放弃');
         const dying = game.players.find(p => p.id === pending.targetId);
         if (action.response === 'save') {
-          const card = removeResponseCard(game, player.id, action.cardId, 'heal');
-          game.discard.push(card);
           if (!dying) throw new Error('濒死玩家不存在');
+          const held = playerCard(game, player.id, action.cardId);
+          const selfWine = player.id === dying.id && held.kind === 'wine';
+          const card = selfWine
+            ? removeResponseCard(game, player.id, action.cardId, 'wine')
+            : removeResponseCard(game, player.id, action.cardId, 'heal');
+          game.discard.push(card);
           const rescuer = game.players.find(p => p.id === player.id);
-          dying.hp += rescuer?.generalIds?.includes('healer') ? 2 : 1;
+          dying.hp += card.kind === 'wine' ? 1 : rescuer?.generalIds?.includes('healer') ? 2 : 1;
           game.log.push({ type: 'rescue', rescuerId: player.id, targetId: dying.id, hp: dying.hp });
           if (dying.hp > 0) {
             dying.alive = true;
