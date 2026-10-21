@@ -447,7 +447,7 @@ class MainActivity : Activity() {
                             showToast("【闪】只能在受到【杀】时响应。")
                         } else {
                             val action = JSONObject().put("type", "play_card").put("cardId", cardId)
-                            if (kind == "attack" || kind == "steal") {
+                            if (kind == "attack" || kind == "steal" || kind == "dismantle") {
                                 val target = players?.let { array ->
                                     (0 until array.length()).mapNotNull { array.optJSONObject(it) }
                                         .firstOrNull { it.optString("id") == selectedTargetId && it.optBoolean("alive", true) }
