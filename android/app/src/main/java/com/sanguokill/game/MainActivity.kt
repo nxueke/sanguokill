@@ -123,6 +123,26 @@ class MainActivity : Activity() {
             setOnClickListener { action() }
         }
 
+    private fun cardButton(label: String, action: () -> Unit): Button =
+        Button(this).apply {
+            text = label
+            isAllCaps = false
+            textSize = 16f
+            setTypeface(typeface, Typeface.BOLD)
+            setTextColor(ink)
+            background = rounded(paper, 10f, gold)
+            stateListAnimator = null
+            minimumHeight = (58 * resources.displayMetrics.density).toInt()
+            setPadding(14, 8, 14, 8)
+            val params = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+            params.setMargins(0, 4, 0, 4)
+            layoutParams = params
+            setOnClickListener { action() }
+        }
+
     private fun column(): LinearLayout = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
         setPadding(16, 14, 16, 20)
@@ -434,7 +454,7 @@ class MainActivity : Activity() {
                     val cardId = card.optString("id")
                     val cardName = card.optString("name")
                     val kind = card.optString("kind")
-                    root.addView(button("【$cardName】 · ${kindLabel(kind)}") {
+                    root.addView(cardButton("【$cardName】 · ${kindLabel(kind)}") {
                         val pendingNow = latestRoomState?.optJSONObject("pendingResponse")
                         val isExpectedResponder = pendingNow?.optString("responsePlayerId") == playerId
                         if (kind == "dodge" && pendingNow?.optString("type") == "dodge" && isExpectedResponder) {
