@@ -285,9 +285,9 @@ export class RoomManager {
       if (heldCard.kind === 'supply_shortage' && game.players.find(p => p.id === action.targetId)?.marks.skipDraw) throw new Error('该玩家已经被【兵粮寸断】影响');
       const attackLimit = actorState?.generalIds?.includes('shu_blade') ? 2 : 1;
       if (heldCard.kind === 'attack' && (Number(game.attacksUsedThisTurn) || 0) >= attackLimit) throw new Error('本回合已经用完【杀】次数');
-      if (['attack', 'steal', 'dismantle', 'duel', 'supply_shortage', 'iron_chain'].includes(heldCard.kind) && !action.targetId) throw new Error(heldCard.kind === 'attack' ? '使用【杀】必须选择目标' : heldCard.kind === 'duel' ? '使用【决斗】必须选择目标' : '使用锦囊必须选择目标');
+      if (['attack', 'steal', 'dismantle', 'duel', 'supply_shortage'].includes(heldCard.kind) && !action.targetId) throw new Error(heldCard.kind === 'attack' ? '使用【杀】必须选择目标' : heldCard.kind === 'duel' ? '使用【决斗】必须选择目标' : '使用锦囊必须选择目标');
       if (!['attack', 'steal', 'dismantle', 'duel', 'supply_shortage', 'iron_chain'].includes(heldCard.kind) && action.targetId) throw new Error('该牌不能指定目标');
-      if (['attack', 'steal', 'dismantle', 'duel', 'supply_shortage', 'iron_chain'].includes(heldCard.kind)) {
+      if (['attack', 'steal', 'dismantle', 'duel', 'supply_shortage'].includes(heldCard.kind) || (heldCard.kind === 'iron_chain' && action.targetId)) {
         const target = game.players.find(p => p.id === action.targetId);
         if (!target || !target.alive) throw new Error('目标不存在或已经阵亡');
         if (target.id === player.id) throw new Error('不能将此牌指定为自己');
@@ -310,9 +310,14 @@ export class RoomManager {
         }
       }
       if (card.kind === 'iron_chain') {
-        const target = game.players.find(p => p.id === played.targetId);
-        target.chained = !target.chained;
-        game.log.push({ type: 'iron_chain_toggled', playerId: player.id, targetId: target.id, chained: target.chained });
+        if (played.targetId) {
+          const target = game.players.find(p => p.id === played.targetId);
+          target.chained = !target.chained;
+          game.log.push({ type: 'iron_chain_toggled', playerId: player.id, targetId: target.id, chained: target.chained });
+        } else {
+          const drawn = drawCards(game, player.id, 1);
+          game.log.push({ type: 'iron_chain_recast', playerId: player.id, count: drawn.length });
+        }
       }
       if (card.kind === 'supply_shortage') {
         const target = game.players.find(p => p.id === played.targetId);
