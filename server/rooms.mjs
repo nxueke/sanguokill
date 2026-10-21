@@ -239,8 +239,8 @@ export class RoomManager {
       const actorState = game.players.find(p => p.id === player.id);
       const attackLimit = actorState?.generalIds?.includes('shu_blade') ? 2 : 1;
       if (heldCard.kind === 'attack' && (Number(game.attacksUsedThisTurn) || 0) >= attackLimit) throw new Error('本回合已经用完【杀】次数');
-      if (['attack', 'steal'].includes(heldCard.kind) && !action.targetId) throw new Error(heldCard.kind === 'attack' ? '使用【杀】必须选择目标' : '使用【顺手牵羊】必须选择目标');
-      if (!['attack', 'steal'].includes(heldCard.kind) && action.targetId) throw new Error('该牌不能指定目标');
+      if (['attack', 'steal', 'dismantle'].includes(heldCard.kind) && !action.targetId) throw new Error(heldCard.kind === 'attack' ? '使用【杀】必须选择目标' : '使用【顺手牵羊】必须选择目标');
+      if (!['attack', 'steal', 'dismantle'].includes(heldCard.kind) && action.targetId) throw new Error('该牌不能指定目标');
       const played = playCard(game, { playerId: player.id, cardId: action.cardId, targetId: action.targetId ?? null });
       const card = played.card;
       if (card.kind === 'attack') {
@@ -279,6 +279,21 @@ export class RoomManager {
           game.log.push({ type: 'card_stolen', playerId: player.id, targetId: target.id });
         } else {
           game.log.push({ type: 'steal_empty', playerId: player.id, targetId: played.targetId });
+        }
+      }
+      if (card.kind === 'dismantle') {
+        const target = game.players.find(p => p.id === played.targetId);
+        if (target?.hand.length) {
+          const index = Math.floor(Math.random() * target.hand.length);
+          const [discarded] = target.hand.splice(index, 1);
+          game.discard.push(discarded);
+          game.log.push({ type: 'card_dismantled', playerId: player.id, targetId: target.id, cardName: discarded.name });
+        } else if (target?.armor) {
+          game.discard.push(target.armor);
+          target.armor = null;
+          game.log.push({ type: 'armor_dismantled', playerId: player.id, targetId: target.id });
+        } else {
+          game.log.push({ type: 'dismantle_empty', playerId: player.id, targetId: played.targetId });
         }
       }
       return room;
@@ -352,10 +367,10 @@ function playerCard(game, playerId, cardId) {
 function makeStarterDeck() {
   const deck = [];
   let id = 1;
-  const kinds = ['heal', 'dodge', 'attack', 'dodge', 'attack', 'draw2', 'steal', 'heal', 'armor', 'wine'];
+  const kinds = ['heal', 'dodge', 'attack', 'dodge', 'attack', 'draw2', 'steal', 'dismantle', 'heal', 'armor', 'wine'];
   for (let i = 0; i < 90; i++) {
     const kind = kinds[i % kinds.length];
-    const name = kind === 'heal' ? '桃' : kind === 'attack' ? '杀' : kind === 'dodge' ? '闪' : kind === 'draw2' ? '摸二张' : kind === 'steal' ? '顺手牵羊' : kind === 'wine' ? '酒' : '护心镜';
+    const name = kind === 'heal' ? '桃' : kind === 'attack' ? '杀' : kind === 'dodge' ? '闪' : kind === 'draw2' ? '摸二张' : kind === 'steal' ? '顺手牵羊' : kind === 'dismantle' ? '过河拆桥' : kind === 'wine' ? '酒' : '护心镜';
     deck.push({ id: 'c' + id++, name, kind });
   }
   // Shuffle before dealing; a fixed repeating order leaks card identities and is unfair.
