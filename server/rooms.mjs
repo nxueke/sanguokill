@@ -256,13 +256,13 @@ export class RoomManager {
       const heldCard = playerCard(game, player.id, action.cardId);
       if (heldCard.kind === 'dodge') throw new Error('【闪】只能在受到【杀】时响应');
       const actorState = game.players.find(p => p.id === player.id);
-      if (heldCard.kind === 'attack' && seatDistance(game, player.id, action.targetId) > (actorState.weapon?.range ?? 1)) throw new Error('目标超出【杀】的攻击距离');
-      if (heldCard.kind === 'steal' && seatDistance(game, player.id, action.targetId) > 1) throw new Error('【顺手牵羊】目标必须在距离 1 以内');
       if (heldCard.kind === 'supply_shortage' && game.players.find(p => p.id === action.targetId)?.marks.skipDraw) throw new Error('该玩家已经被【兵粮寸断】影响');
       const attackLimit = actorState?.generalIds?.includes('shu_blade') ? 2 : 1;
       if (heldCard.kind === 'attack' && (Number(game.attacksUsedThisTurn) || 0) >= attackLimit) throw new Error('本回合已经用完【杀】次数');
       if (['attack', 'steal', 'dismantle', 'duel', 'supply_shortage'].includes(heldCard.kind) && !action.targetId) throw new Error(heldCard.kind === 'attack' ? '使用【杀】必须选择目标' : heldCard.kind === 'duel' ? '使用【决斗】必须选择目标' : '使用锦囊必须选择目标');
       if (!['attack', 'steal', 'dismantle', 'duel', 'supply_shortage'].includes(heldCard.kind) && action.targetId) throw new Error('该牌不能指定目标');
+      if (heldCard.kind === 'attack' && seatDistance(game, player.id, action.targetId) > (actorState.weapon?.range ?? 1)) throw new Error('目标超出【杀】的攻击距离');
+      if (heldCard.kind === 'steal' && seatDistance(game, player.id, action.targetId) > 1) throw new Error('【顺手牵羊】目标必须在距离 1 以内');
       const played = playCard(game, { playerId: player.id, cardId: action.cardId, targetId: action.targetId ?? null });
       const card = played.card;
       if (card.kind === 'supply_shortage') {
