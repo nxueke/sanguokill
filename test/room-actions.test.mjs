@@ -175,6 +175,34 @@ test('draw-two card draws two cards and steal transfers one target card', () => 
   assert.equal(hostState.hand.length, hostBefore);
 });
 
+test('Five Grains makes every living player draw one card', () => {
+  const { manager, room, host, guest } = startedRoom();
+  const hostState = room.game.players.find(p => p.id === host.id);
+  const guestState = room.game.players.find(p => p.id === guest.id);
+  const thirdState = room.game.players.find(p => p.id !== host.id && p.id !== guest.id);
+  hostState.hand.push({ id: 'harvest-test', name: '五谷丰登', kind: 'harvest' });
+  const before = [hostState, guestState, thirdState].map(p => p.hand.length);
+  manager.act(host.token, { type: 'play_card', cardId: 'harvest-test' });
+  assert.deepEqual([hostState, guestState, thirdState].map(p => p.hand.length), before.map(n => n + 1));
+  assert.equal(room.game.log.filter(entry => entry.type === 'harvest_draw').length, 3);
+});
+
+test('Five Grains skips dead players', () => {
+  const { manager, room, host, guest } = startedRoom();
+  const hostState = room.game.players.find(p => p.id === host.id);
+  const guestState = room.game.players.find(p => p.id === guest.id);
+  const thirdState = room.game.players.find(p => p.id !== host.id && p.id !== guest.id);
+  thirdState.alive = false;
+  hostState.hand.push({ id: 'harvest-dead-test', name: '五谷丰登', kind: 'harvest' });
+  const hostBefore = hostState.hand.length;
+  const guestBefore = guestState.hand.length;
+  const deadBefore = thirdState.hand.length;
+  manager.act(host.token, { type: 'play_card', cardId: 'harvest-dead-test' });
+  assert.equal(hostState.hand.length, hostBefore + 1);
+  assert.equal(guestState.hand.length, guestBefore + 1);
+  assert.equal(thirdState.hand.length, deadBefore);
+});
+
 test('armor equips into a slot and blocks one incoming attack', () => {
   const { manager, room, host, guest } = startedRoom();
   const hostState = room.game.players.find(p => p.id === host.id);
