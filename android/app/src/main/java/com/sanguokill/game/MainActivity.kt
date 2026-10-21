@@ -325,7 +325,8 @@ class MainActivity : Activity() {
                 val connection = if (p.optBoolean("connected")) "在线" else "断线"
                 val bidValue = p.optInt("bid", -1)
                 val bidText = if (bidValue >= 0) " · 叫分 $bidValue" else ""
-                val armor = p.optString("armor").takeIf { it.isNotBlank() && it != "null" }?.let { " · 装备 $it" } ?: ""
+                val armor = p.optString("armor").takeIf { it.isNotBlank() && it != "null" }?.let { " · 防具 $it" } ?: ""
+                val weapon = p.optString("weapon").takeIf { it.isNotBlank() && it != "null" }?.let { " · 武器 $it" } ?: ""
                 val role = p.optString("role").takeIf { it.isNotBlank() && it != "null" }
                 val roleText = role?.let { " · 身份 ${roleLabel(it)}" } ?: ""
                 val generals = p.optJSONArray("generals")
@@ -531,7 +532,8 @@ class MainActivity : Activity() {
             "player_died" -> "玩家 " + event.optString("playerId") + " 阵亡"
             "card_stolen" -> "玩家 " + event.optString("playerId") + " 获得目标一张手牌"
             "armor_blocked" -> "玩家 " + event.optString("targetId") + " 的护心镜抵挡了攻击"
-            "equipment_equipped" -> "玩家 " + event.optString("playerId") + " 装备了护心镜"
+            "armor_dismantled" -> "玩家 " + event.optString("targetId") + " 的护心镜被拆除"
+            "equipment_equipped" -> "玩家 " + event.optString("playerId") + " 装备了" + if (event.optString("slot") == "weapon") "青釭剑" else "护心镜"
             "cards_drawn" -> "玩家 " + event.optString("playerId") + " 摸了 " + event.optInt("count") + " 张牌"
             "wine_used" -> "玩家 " + event.optString("playerId") + " 使用【酒】，下一张【杀】伤害 +1"
             "game_finished" -> "对局结束，胜利阵营：" + sideLabel(event.optString("winningSide"))
@@ -573,6 +575,7 @@ class MainActivity : Activity() {
         "dismantle" -> "弃置目标一张牌"
         "duel" -> "决斗：双方轮流打出【杀】"
         "peach_garden" -> "桃园结义：所有存活角色回复1点体力"
+        "weapon" -> "青釭剑：攻击无视目标防具"
         "steal" -> "获得目标随机一张手牌"
         "armor" -> "装备：抵挡下一次【杀】"
         "wine" -> "强化：下一张【杀】伤害 +1"
