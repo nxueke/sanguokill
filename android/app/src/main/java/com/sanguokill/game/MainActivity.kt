@@ -422,7 +422,7 @@ class MainActivity : Activity() {
                     else JSONObject().put("type", "respond").put("response", "pass")
                     sendOnlineMessage(JSONObject().put("type", "action").put("action", action))
                 })
-                root.addView(text(when (responseType) { "dodge" -> "点击手牌中的【闪】进行响应。"; "duel" -> "点击手牌中的【杀】进行响应。"; "aoe" -> if (pending.optString("response") == "attack") "点击手牌中的【杀】响应南蛮入侵。" else "点击手牌中的【闪】响应万箭齐发。"; else -> "点击手牌中的【桃】救援。" }, 14f))
+                root.addView(text(when (responseType) { "dodge" -> "点击手牌中的【闪】进行响应。"; "duel" -> "点击手牌中的【杀】进行响应。"; "aoe" -> if (pending.optString("response") == "attack") "点击手牌中的【杀】响应南蛮入侵。" else "点击手牌中的【闪】响应万箭齐发。"; else -> "点击【桃】救援；濒死者也可用【酒】自救。" }, 14f))
             } else {
                 root.addView(text("正在等待其他玩家响应，暂时不能操作。", 14f))
             }
@@ -471,14 +471,14 @@ class MainActivity : Activity() {
                         } else if (pendingNow?.optString("type") == "aoe" && isExpectedResponder && kind == pendingNow.optString("response")) {
                             sendOnlineMessage(JSONObject().put("type", "action").put("action",
                                 JSONObject().put("type", "respond").put("response", kind).put("cardId", cardId)))
-                        } else if (kind == "heal" && pendingNow?.optString("type") == "rescue" && isExpectedResponder) {
+                        } else if ((kind == "heal" || (kind == "wine" && pendingNow?.optString("targetId") == playerId)) && pendingNow?.optString("type") == "rescue" && isExpectedResponder) {
                             sendOnlineMessage(JSONObject().put("type", "action").put("action",
                                 JSONObject().put("type", "rescue").put("response", "save").put("cardId", cardId)))
                         } else if (kind == "dodge") {
                             showToast("【闪】只能在受到【杀】时响应。")
                         } else {
                             val action = JSONObject().put("type", "play_card").put("cardId", cardId)
-                            if (kind == "attack" || kind == "steal" || kind == "dismantle" || kind == "duel" || kind == "supply_shortage") {
+                            if (kind == "attack" || kind == "steal" || kind == "dismantle" || kind == "duel" || kind == "supply_shortage" || kind == "iron_chain") {
                                 val target = players?.let { array ->
                                     (0 until array.length()).mapNotNull { array.optJSONObject(it) }
                                         .firstOrNull { it.optString("id") == selectedTargetId && it.optBoolean("alive", true) }
