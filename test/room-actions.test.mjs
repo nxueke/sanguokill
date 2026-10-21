@@ -517,3 +517,18 @@ test('Iron Chain requires a valid living target and cannot target self', () => {
   assert.throws(() => manager.act(host.token, { type: 'play_card', cardId: 'iron-chain-invalid', targetId: host.id }), /不能将此牌指定为自己/);
   assert.equal(hostState.hand.some(card => card.id === 'iron-chain-invalid'), true);
 });
+
+
+test('a dying player can use Wine to rescue themselves', () => {
+  const { manager, room, host, guest } = startedRoom();
+  const target = room.game.players.find(p => p.id === guest.id);
+  target.hp = 1;
+  target.hand.push({ id: 'self-wine-rescue', name: '酒', kind: 'wine' });
+  manager.act(host.token, { type: 'play_card', cardId: attackCardId(room, host.id), targetId: guest.id });
+  manager.act(guest.token, { type: 'respond', response: 'pass' });
+  assert.equal(room.game.pendingResponse.type, 'rescue');
+  manager.act(guest.token, { type: 'rescue', response: 'save', cardId: 'self-wine-rescue' });
+  assert.equal(target.hp, 1);
+  assert.equal(target.alive, true);
+  assert.equal(room.game.pendingResponse, null);
+});
