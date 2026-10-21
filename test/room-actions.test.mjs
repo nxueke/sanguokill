@@ -544,3 +544,22 @@ test('Iron Chain can be recast without a target to draw one card', () => {
   assert.equal(room.game.log.some(entry => entry.type === 'iron_chain_recast' && entry.playerId === host.id), true);
   assert.equal(room.game.discard.some(card => card.id === 'iron-chain-recast'), true);
 });
+
+
+test('Fire Slash and Thunder Slash preserve elemental damage type through dodge response', () => {
+  for (const [kind, expectedType, name] of [
+    ['fire_slash', 'fire', '火杀'],
+    ['thunder_slash', 'thunder', '雷杀'],
+  ]) {
+    const { manager, room, host, guest } = startedRoom();
+    const hostState = room.game.players.find(p => p.id === host.id);
+    const target = room.game.players.find(p => p.id === guest.id);
+    hostState.hand.push({ id: kind + '-test', name, kind });
+    manager.act(host.token, { type: 'play_card', cardId: kind + '-test', targetId: guest.id });
+    assert.equal(room.game.pendingResponse.type, 'dodge');
+    assert.equal(room.game.pendingResponse.damageType, expectedType);
+    manager.act(guest.token, { type: 'respond', response: 'pass' });
+    assert.equal(room.game.log.some(entry => entry.type === 'damage' && entry.targetId === guest.id && entry.damageType === expectedType), true);
+    assert.equal(target.hp, 3);
+  }
+});
