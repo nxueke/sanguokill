@@ -533,6 +533,7 @@ class MainActivity : Activity() {
             "card_stolen" -> "玩家 " + event.optString("playerId") + " 获得目标一张手牌"
             "armor_blocked" -> "玩家 " + event.optString("targetId") + " 的护心镜抵挡了攻击"
             "armor_dismantled" -> "玩家 " + event.optString("targetId") + " 的护心镜被拆除"
+            "weapon_dismantled" -> "玩家 " + event.optString("targetId") + " 的武器被拆除"
             "equipment_equipped" -> "玩家 " + event.optString("playerId") + " 装备了" + if (event.optString("slot") == "weapon") "青釭剑" else "护心镜"
             "cards_drawn" -> "玩家 " + event.optString("playerId") + " 摸了 " + event.optInt("count") + " 张牌"
             "wine_used" -> "玩家 " + event.optString("playerId") + " 使用【酒】，下一张【杀】伤害 +1"
