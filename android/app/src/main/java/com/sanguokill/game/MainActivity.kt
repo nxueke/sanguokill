@@ -430,6 +430,10 @@ class MainActivity : Activity() {
         if (state.optString("status") == "playing") {
             root.addView(text("当前行动玩家：" + state.optString("currentPlayerId") + "    回合：" + state.optInt("turnNumber"), 15f, true))
             root.addView(text("攻击目标（点击选择）", 16f, true))
+            root.addView(button("取消目标 / 铁索连环重铸") {
+                selectedTargetId = ""
+                renderOnlineState(state)
+            })
             if (players != null) {
                 for (i in 0 until players.length()) {
                     val candidate = players.optJSONObject(i) ?: continue
@@ -478,7 +482,14 @@ class MainActivity : Activity() {
                             showToast("【闪】只能在受到【杀】时响应。")
                         } else {
                             val action = JSONObject().put("type", "play_card").put("cardId", cardId)
-                            if (kind == "attack" || kind == "steal" || kind == "dismantle" || kind == "duel" || kind == "supply_shortage" || kind == "iron_chain") {
+                            if (kind == "iron_chain") {
+                                val target = players?.let { array ->
+                                    (0 until array.length()).mapNotNull { array.optJSONObject(it) }
+                                        .firstOrNull { it.optString("id") == selectedTargetId && it.optBoolean("alive", true) }
+                                }
+                                if (target != null) action.put("targetId", target.optString("id"))
+                                sendOnlineMessage(JSONObject().put("type", "action").put("action", action))
+                            } else if (kind == "attack" || kind == "steal" || kind == "dismantle" || kind == "duel" || kind == "supply_shortage") {
                                 val target = players?.let { array ->
                                     (0 until array.length()).mapNotNull { array.optJSONObject(it) }
                                         .firstOrNull { it.optString("id") == selectedTargetId && it.optBoolean("alive", true) }
