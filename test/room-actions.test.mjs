@@ -493,3 +493,27 @@ test('area-effect resolution resumes after a target is rescued from dying', () =
   assert.equal(room.game.pendingResponse, null);
   assert.equal(thirdState.hp, 4);
 });
+
+
+test('Iron Chain toggles a living target chain state and can be toggled off', () => {
+  const { manager, room, host, guest } = startedRoom();
+  const hostState = room.game.players.find(p => p.id === host.id);
+  const guestState = room.game.players.find(p => p.id === guest.id);
+  hostState.hand.push({ id: 'iron-chain-test', name: '铁索连环', kind: 'iron_chain' });
+  assert.equal(guestState.chained, false);
+  manager.act(host.token, { type: 'play_card', cardId: 'iron-chain-test', targetId: guest.id });
+  assert.equal(guestState.chained, true);
+  assert.equal(room.game.log.some(entry => entry.type === 'iron_chain_toggled' && entry.targetId === guest.id && entry.chained), true);
+  hostState.hand.push({ id: 'iron-chain-test-2', name: '铁索连环', kind: 'iron_chain' });
+  manager.act(host.token, { type: 'play_card', cardId: 'iron-chain-test-2', targetId: guest.id });
+  assert.equal(guestState.chained, false);
+});
+
+test('Iron Chain requires a valid living target and cannot target self', () => {
+  const { manager, room, host, guest } = startedRoom();
+  const hostState = room.game.players.find(p => p.id === host.id);
+  hostState.hand.push({ id: 'iron-chain-invalid', name: '铁索连环', kind: 'iron_chain' });
+  assert.throws(() => manager.act(host.token, { type: 'play_card', cardId: 'iron-chain-invalid' }), /使用锦囊必须选择目标/);
+  assert.throws(() => manager.act(host.token, { type: 'play_card', cardId: 'iron-chain-invalid', targetId: host.id }), /不能将此牌指定为自己/);
+  assert.equal(hostState.hand.some(card => card.id === 'iron-chain-invalid'), true);
+});
