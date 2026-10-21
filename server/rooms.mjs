@@ -364,7 +364,8 @@ export class RoomManager {
         game.log.push({ type: 'supply_shortage_triggered', playerId: player.id });
         return room;
       }
-      drawCards(game, player.id, 1);
+      // Standard draw phase: two cards; Supply Shortage skips the whole phase above.
+      drawCards(game, player.id, 2);
       game.drawnThisTurn = true;
       return room;
     }
