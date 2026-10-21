@@ -258,10 +258,16 @@ export class RoomManager {
       const actorState = game.players.find(p => p.id === player.id);
       const attackLimit = actorState?.generalIds?.includes('shu_blade') ? 2 : 1;
       if (heldCard.kind === 'attack' && (Number(game.attacksUsedThisTurn) || 0) >= attackLimit) throw new Error('本回合已经用完【杀】次数');
-      if (['attack', 'steal', 'dismantle', 'duel'].includes(heldCard.kind) && !action.targetId) throw new Error(heldCard.kind === 'attack' ? '使用【杀】必须选择目标' : heldCard.kind === 'duel' ? '使用【决斗】必须选择目标' : '使用锦囊必须选择目标');
-      if (!['attack', 'steal', 'dismantle', 'duel'].includes(heldCard.kind) && action.targetId) throw new Error('该牌不能指定目标');
+      if (['attack', 'steal', 'dismantle', 'duel', 'supply_shortage'].includes(heldCard.kind) && !action.targetId) throw new Error(heldCard.kind === 'attack' ? '使用【杀】必须选择目标' : heldCard.kind === 'duel' ? '使用【决斗】必须选择目标' : '使用锦囊必须选择目标');
+      if (!['attack', 'steal', 'dismantle', 'duel', 'supply_shortage'].includes(heldCard.kind) && action.targetId) throw new Error('该牌不能指定目标');
       const played = playCard(game, { playerId: player.id, cardId: action.cardId, targetId: action.targetId ?? null });
       const card = played.card;
+      if (card.kind === 'supply_shortage') {
+        const target = game.players.find(p => p.id === played.targetId);
+        if (target.marks.skipDraw) throw new Error('该玩家已经被【兵粮寸断】影响');
+        target.marks.skipDraw = true;
+        game.log.push({ type: 'supply_shortage_applied', playerId: player.id, targetId: target.id });
+      }
       if (card.kind === 'duel') {
         game.pendingResponse = { type: 'duel', sourceId: player.id, targetId: played.targetId, responderId: played.targetId };
         game.log.push({ type: 'duel_started', sourceId: player.id, targetId: played.targetId });
@@ -344,6 +350,13 @@ export class RoomManager {
     if (action?.type === 'draw') {
       if (game.players[game.currentPlayerIndex]?.id !== player.id) throw new Error('还没轮到你');
       if (game.drawnThisTurn) throw new Error('本回合已经摸过牌');
+      const actor = game.players.find(p => p.id === player.id);
+      if (actor?.marks.skipDraw) {
+        actor.marks.skipDraw = false;
+        game.drawnThisTurn = true;
+        game.log.push({ type: 'supply_shortage_triggered', playerId: player.id });
+        return room;
+      }
       drawCards(game, player.id, 1);
       game.drawnThisTurn = true;
       return room;
@@ -351,7 +364,13 @@ export class RoomManager {
     if (action?.type === 'end_turn') {
       if (game.players[game.currentPlayerIndex]?.id !== player.id) throw new Error('还没轮到你');
       const endingPlayer = game.players[game.currentPlayerIndex];
-      if (endingPlayer?.marks) endingPlayer.marks.wineBoost = false;
+      if (endingPlayer?.marks) {
+        endingPlayer.marks.wineBoost = false;
+        if (endingPlayer.marks.skipDraw) {
+          endingPlayer.marks.skipDraw = false;
+          game.log.push({ type: 'supply_shortage_expired', playerId: endingPlayer.id });
+        }
+      }
       advanceTurn(game);
       game.drawnThisTurn = false;
       game.attacksUsedThisTurn = 0;
@@ -410,10 +429,10 @@ function playerCard(game, playerId, cardId) {
 function makeStarterDeck() {
   const deck = [];
   let id = 1;
-  const kinds = ['heal', 'dodge', 'attack', 'dodge', 'attack', 'draw2', 'steal', 'dismantle', 'duel', 'peach_garden', 'heal', 'armor', 'weapon', 'wine'];
+  const kinds = ['heal', 'dodge', 'attack', 'dodge', 'attack', 'draw2', 'steal', 'dismantle', 'duel', 'peach_garden', 'supply_shortage', 'heal', 'armor', 'weapon', 'wine'];
   for (let i = 0; i < 90; i++) {
     const kind = kinds[i % kinds.length];
-    const name = kind === 'heal' ? '桃' : kind === 'attack' ? '杀' : kind === 'dodge' ? '闪' : kind === 'draw2' ? '无中生有' : kind === 'steal' ? '顺手牵羊' : kind === 'dismantle' ? '过河拆桥' : kind === 'duel' ? '决斗' : kind === 'peach_garden' ? '桃园结义' : kind === 'weapon' ? '青釭剑' : kind === 'wine' ? '酒' : '护心镜';
+    const name = kind === 'heal' ? '桃' : kind === 'attack' ? '杀' : kind === 'dodge' ? '闪' : kind === 'draw2' ? '无中生有' : kind === 'steal' ? '顺手牵羊' : kind === 'dismantle' ? '过河拆桥' : kind === 'duel' ? '决斗' : kind === 'peach_garden' ? '桃园结义' : kind === 'weapon' ? '青釭剑' : kind === 'supply_shortage' ? '兵粮寸断' : kind === 'wine' ? '酒' : '护心镜';
     deck.push({ id: 'c' + id++, name, kind });
   }
   // Shuffle before dealing; a fixed repeating order leaks card identities and is unfair.
