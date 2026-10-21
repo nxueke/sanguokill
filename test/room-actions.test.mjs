@@ -94,6 +94,11 @@ test('a player can use at most one attack per turn', () => {
     () => manager.act(host.token, { type: 'play_card', cardId: 'extra-attack', targetId: guest.id }),
     /本回合已经用完【杀】次数/
   );
+  const excess = hostState.hand.length - hostState.hp;
+  if (excess > 0) {
+    const discardIds = hostState.hand.filter(card => card.id !== 'extra-attack').slice(0, excess).map(card => card.id);
+    manager.act(host.token, { type: 'discard', cardIds: discardIds });
+  }
   manager.act(host.token, { type: 'end_turn' });
   manager.act(guest.token, { type: 'end_turn' });
   manager.act(room.players[2].token, { type: 'end_turn' });
