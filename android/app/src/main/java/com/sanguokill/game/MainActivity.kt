@@ -43,6 +43,7 @@ class MainActivity : Activity() {
     private var playerToken: String? = null
     private var playerId: String? = null
     private var selectedTargetId: String? = null
+    private val selectedDiscardIds = mutableSetOf<String>()
     private var latestRoomState: JSONObject? = null
     private var serverUrlValue = "ws://10.0.2.2:3000/ws"
     private var playerNameValue = "玩家"
@@ -443,15 +444,15 @@ class MainActivity : Activity() {
             root.addView(button("摸两张牌（摸牌阶段）") {
                 sendOnlineMessage(JSONObject().put("type", "action").put("action", JSONObject().put("type", "draw")))
             })
-            root.addView(button("结束回合") {
-                sendOnlineMessage(JSONObject().put("type", "action").put("action", JSONObject().put("type", "end_turn")))
-            })
             root.addView(text("你的手牌（点击使用）", 18f, true))
             val ownPlayer = players?.let { array ->
                 (0 until array.length()).mapNotNull { array.optJSONObject(it) }.firstOrNull { it.optString("id") == playerId }
             }
             val hand = ownPlayer?.optJSONArray("hand")
             if (hand != null) {
+                val handIds = (0 until hand.length()).mapNotNull { hand.optJSONObject(it)?.optString("id") }
+                selectedDiscardIds.retainAll(handIds.toSet())
+                val discardRequired = (hand.length() - (ownPlayer?.optInt("hp", 4) ?: 4)).coerceAtLeast(0)
                 for (i in 0 until hand.length()) {
                     val card = hand.optJSONObject(i) ?: continue
                     val cardId = card.optString("id")
@@ -492,6 +493,32 @@ class MainActivity : Activity() {
                         }
                     })
                 }
+                if (discardRequired > 0) {
+                    root.addView(text("弃牌阶段：需要弃置 ${discardRequired} 张；已选择 ${selectedDiscardIds.size} 张。", 15f, true))
+                    for (i in 0 until hand.length()) {
+                        val card = hand.optJSONObject(i) ?: continue
+                        val id = card.optString("id")
+                        val selected = selectedDiscardIds.contains(id)
+                        root.addView(button((if (selected) "✓ " else "＋ ") + "选择弃置【" + card.optString("name") + "】") {
+                            if (selected) selectedDiscardIds.remove(id)
+                            else if (selectedDiscardIds.size < discardRequired) selectedDiscardIds.add(id)
+                            else showToast("只需选择 ${discardRequired} 张手牌。")
+                            renderOnlineState(state)
+                        })
+                    }
+                    root.addView(button("确认弃置 ${selectedDiscardIds.size}/${discardRequired} 张") {
+                        if (selectedDiscardIds.size != discardRequired) {
+                            showToast("请准确选择 ${discardRequired} 张手牌。")
+                        } else {
+                            sendOnlineMessage(JSONObject().put("type", "action").put("action",
+                                JSONObject().put("type", "discard").put("cardIds", JSONArray(selectedDiscardIds.toList()))))
+                            selectedDiscardIds.clear()
+                        }
+                    })
+                }
+                root.addView(button("结束回合") {
+                    sendOnlineMessage(JSONObject().put("type", "action").put("action", JSONObject().put("type", "end_turn")))
+                })
             } else {
                 root.addView(text("等待服务器同步你的手牌。", 14f))
             }
