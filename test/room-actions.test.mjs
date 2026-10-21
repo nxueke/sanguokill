@@ -274,3 +274,22 @@ test('duel alternates attack responses and damages the player who cannot answer'
   assert.equal(room.game.pendingResponse, null);
   assert.equal(room.game.log.some(entry => entry.type === 'duel_finished' && entry.loserId === host.id), true);
 });
+
+
+test('Peach Garden heals every living player by one up to max HP', () => {
+  const { manager, room, host, guest } = startedRoom();
+  const hostState = room.game.players.find(p => p.id === host.id);
+  const guestState = room.game.players.find(p => p.id === guest.id);
+  const thirdState = room.game.players.find(p => p.id !== host.id && p.id !== guest.id);
+  hostState.hp = 2;
+  guestState.hp = 3;
+  thirdState.hp = 4;
+  hostState.hand.push({ id: 'peach-garden-test', name: '桃园结义', kind: 'peach_garden' });
+
+  manager.act(host.token, { type: 'play_card', cardId: 'peach-garden-test' });
+
+  assert.equal(hostState.hp, 3);
+  assert.equal(guestState.hp, 4);
+  assert.equal(thirdState.hp, 4);
+  assert.equal(room.game.log.some(entry => entry.type === 'peach_garden_heal' && entry.targetId === guest.id), true);
+});
