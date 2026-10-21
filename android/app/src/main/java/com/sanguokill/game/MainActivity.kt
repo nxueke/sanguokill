@@ -567,6 +567,7 @@ class MainActivity : Activity() {
             "supply_shortage_expired" -> "玩家 " + event.optString("playerId") + " 未摸牌，【兵粮寸断】效果结束"
             "equipment_equipped" -> "玩家 " + event.optString("playerId") + " 装备了" + if (event.optString("slot") == "weapon") "青釭剑" else "护心镜"
             "cards_drawn" -> "玩家 " + event.optString("playerId") + " 摸了 " + event.optInt("count") + " 张牌"
+            "hand_limit_discard" -> "玩家 " + event.optString("playerId") + " 弃置了 " + event.optInt("count") + " 张手牌"
             "wine_used" -> "玩家 " + event.optString("playerId") + " 使用【酒】，下一张【杀】伤害 +1"
             "game_finished" -> "对局结束，胜利阵营：" + sideLabel(event.optString("winningSide"))
             else -> type
