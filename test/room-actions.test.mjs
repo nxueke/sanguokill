@@ -532,3 +532,15 @@ test('a dying player can use Wine to rescue themselves', () => {
   assert.equal(target.alive, true);
   assert.equal(room.game.pendingResponse, null);
 });
+
+
+test('Iron Chain can be recast without a target to draw one card', () => {
+  const { manager, room, host } = startedRoom();
+  const hostState = room.game.players.find(p => p.id === host.id);
+  hostState.hand.push({ id: 'iron-chain-recast', name: '铁索连环', kind: 'iron_chain' });
+  const before = hostState.hand.length;
+  manager.act(host.token, { type: 'play_card', cardId: 'iron-chain-recast' });
+  assert.equal(hostState.hand.length, before);
+  assert.equal(room.game.log.some(entry => entry.type === 'iron_chain_recast' && entry.playerId === host.id), true);
+  assert.equal(room.game.discard.some(card => card.id === 'iron-chain-recast'), true);
+});
