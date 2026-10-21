@@ -183,7 +183,7 @@ test('Five Grains makes every living player draw one card', () => {
   hostState.hand.push({ id: 'harvest-test', name: '五谷丰登', kind: 'harvest' });
   const before = [hostState, guestState, thirdState].map(p => p.hand.length);
   manager.act(host.token, { type: 'play_card', cardId: 'harvest-test' });
-  assert.deepEqual([hostState, guestState, thirdState].map(p => p.hand.length), before.map(n => n + 1));
+  assert.deepEqual([hostState, guestState, thirdState].map(p => p.hand.length), [before[0], before[1] + 1, before[2] + 1]);
   assert.equal(room.game.log.filter(entry => entry.type === 'harvest_draw').length, 3);
 });
 
@@ -198,7 +198,7 @@ test('Five Grains skips dead players', () => {
   const guestBefore = guestState.hand.length;
   const deadBefore = thirdState.hand.length;
   manager.act(host.token, { type: 'play_card', cardId: 'harvest-dead-test' });
-  assert.equal(hostState.hand.length, hostBefore + 1);
+  assert.equal(hostState.hand.length, hostBefore);
   assert.equal(guestState.hand.length, guestBefore + 1);
   assert.equal(thirdState.hand.length, deadBefore);
 });
