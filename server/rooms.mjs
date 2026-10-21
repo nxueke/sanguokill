@@ -256,6 +256,7 @@ export class RoomManager {
       const heldCard = playerCard(game, player.id, action.cardId);
       if (heldCard.kind === 'dodge') throw new Error('【闪】只能在受到【杀】时响应');
       const actorState = game.players.find(p => p.id === player.id);
+      if (heldCard.kind === 'supply_shortage' && game.players.find(p => p.id === action.targetId)?.marks.skipDraw) throw new Error('该玩家已经被【兵粮寸断】影响');
       const attackLimit = actorState?.generalIds?.includes('shu_blade') ? 2 : 1;
       if (heldCard.kind === 'attack' && (Number(game.attacksUsedThisTurn) || 0) >= attackLimit) throw new Error('本回合已经用完【杀】次数');
       if (['attack', 'steal', 'dismantle', 'duel', 'supply_shortage'].includes(heldCard.kind) && !action.targetId) throw new Error(heldCard.kind === 'attack' ? '使用【杀】必须选择目标' : heldCard.kind === 'duel' ? '使用【决斗】必须选择目标' : '使用锦囊必须选择目标');
@@ -264,7 +265,6 @@ export class RoomManager {
       const card = played.card;
       if (card.kind === 'supply_shortage') {
         const target = game.players.find(p => p.id === played.targetId);
-        if (target.marks.skipDraw) throw new Error('该玩家已经被【兵粮寸断】影响');
         target.marks.skipDraw = true;
         game.log.push({ type: 'supply_shortage_applied', playerId: player.id, targetId: target.id });
       }
