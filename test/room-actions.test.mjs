@@ -581,3 +581,24 @@ test('elemental damage propagates to all chained living players and breaks chain
   assert.equal(other.chained, false);
   assert.equal(room.game.log.some(entry => entry.type === 'chain_broken' && entry.damageType === 'fire' && entry.targetIds.length === 2), true);
 });
+
+
+test('elemental chain damage resumes remaining targets after rescue', () => {
+  const { manager, room, host, guest } = startedRoom();
+  const hostState = room.game.players.find(p => p.id === host.id);
+  const target = room.game.players.find(p => p.id === guest.id);
+  const other = room.game.players.find(p => p.id !== host.id && p.id !== guest.id);
+  target.hp = 1;
+  target.chained = true;
+  other.chained = true;
+  target.hand.push({ id: 'chain-rescue-peach', name: '桃', kind: 'heal' });
+  hostState.hand.push({ id: 'chain-rescue-fire-slash', name: '火杀', kind: 'fire_slash' });
+  manager.act(host.token, { type: 'play_card', cardId: 'chain-rescue-fire-slash', targetId: guest.id });
+  manager.act(guest.token, { type: 'respond', response: 'pass' });
+  assert.equal(room.game.pendingResponse.type, 'rescue');
+  manager.act(guest.token, { type: 'rescue', response: 'save', cardId: 'chain-rescue-peach' });
+  assert.equal(target.alive, true);
+  assert.equal(target.hp, 1);
+  assert.equal(other.hp, 3);
+  assert.equal(room.game.pendingResponse, null);
+});
