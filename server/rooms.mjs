@@ -291,6 +291,13 @@ export class RoomManager {
         game.log.push({ type: 'healed', playerId: player.id, hp: target.hp });
       }
       if (card.kind === 'draw2') drawCards(game, player.id, actorState?.generalIds?.includes('wu_sage') ? 3 : 2);
+      if (card.kind === 'harvest') {
+        for (const target of game.players) {
+          if (!target.alive) continue;
+          const drawn = drawCards(game, target.id, 1);
+          game.log.push({ type: 'harvest_draw', sourceId: player.id, targetId: target.id, count: drawn.length });
+        }
+      }
       if (card.kind === 'peach_garden') {
         for (const target of game.players) {
           if (!target.alive) continue;
@@ -429,10 +436,10 @@ function playerCard(game, playerId, cardId) {
 function makeStarterDeck() {
   const deck = [];
   let id = 1;
-  const kinds = ['heal', 'dodge', 'attack', 'dodge', 'attack', 'draw2', 'steal', 'dismantle', 'duel', 'peach_garden', 'supply_shortage', 'heal', 'armor', 'weapon', 'wine'];
+  const kinds = ['heal', 'dodge', 'attack', 'dodge', 'attack', 'draw2', 'steal', 'dismantle', 'duel', 'peach_garden', 'harvest', 'supply_shortage', 'heal', 'armor', 'weapon', 'wine'];
   for (let i = 0; i < 90; i++) {
     const kind = kinds[i % kinds.length];
-    const name = kind === 'heal' ? '桃' : kind === 'attack' ? '杀' : kind === 'dodge' ? '闪' : kind === 'draw2' ? '无中生有' : kind === 'steal' ? '顺手牵羊' : kind === 'dismantle' ? '过河拆桥' : kind === 'duel' ? '决斗' : kind === 'peach_garden' ? '桃园结义' : kind === 'weapon' ? '青釭剑' : kind === 'supply_shortage' ? '兵粮寸断' : kind === 'wine' ? '酒' : '护心镜';
+    const name = kind === 'heal' ? '桃' : kind === 'attack' ? '杀' : kind === 'dodge' ? '闪' : kind === 'draw2' ? '无中生有' : kind === 'steal' ? '顺手牵羊' : kind === 'dismantle' ? '过河拆桥' : kind === 'duel' ? '决斗' : kind === 'peach_garden' ? '桃园结义' : kind === 'harvest' ? '五谷丰登' : kind === 'weapon' ? '青釭剑' : kind === 'supply_shortage' ? '兵粮寸断' : kind === 'wine' ? '酒' : '护心镜';
     deck.push({ id: 'c' + id++, name, kind });
   }
   // Shuffle before dealing; a fixed repeating order leaks card identities and is unfair.
