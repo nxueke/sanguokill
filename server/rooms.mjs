@@ -169,6 +169,25 @@ export class RoomManager {
 
     if (game.pendingResponse) {
       const pending = game.pendingResponse;
+      if (pending.type === 'duel') {
+        if (player.id !== pending.responderId) throw new Error('正在等待另一名玩家进行【决斗】响应');
+        if (action?.type !== 'respond' || !['attack', 'pass'].includes(action.response)) throw new Error('【决斗】中请打出【杀】或选择不出');
+        if (action.response === 'attack') {
+          const card = removeResponseCard(game, player.id, action.cardId, 'attack');
+          game.discard.push(card);
+          const previousResponder = pending.responderId;
+          pending.responderId = previousResponder === pending.sourceId ? pending.targetId : pending.sourceId;
+          game.log.push({ type: 'duel_attack', playerId: player.id, nextPlayerId: pending.responderId });
+          return room;
+        }
+        const loserId = pending.responderId;
+        const winnerId = loserId === pending.sourceId ? pending.targetId : pending.sourceId;
+        game.pendingResponse = null;
+        applyDamage(game, { sourceId: winnerId, targetId: loserId, amount: 1, deferDying: true });
+        if (game.dyingPlayerId) beginRescue(game, game.dyingPlayerId);
+        game.log.push({ type: 'duel_finished', winnerId, loserId });
+        return room;
+      }
       if (pending.type === 'dodge') {
         if (player.id !== pending.targetId) throw new Error('正在等待受【杀】目标响应');
         if (action?.type !== 'respond' || !['dodge', 'pass'].includes(action.response)) throw new Error('请打出【闪】或选择不响应');
@@ -239,10 +258,14 @@ export class RoomManager {
       const actorState = game.players.find(p => p.id === player.id);
       const attackLimit = actorState?.generalIds?.includes('shu_blade') ? 2 : 1;
       if (heldCard.kind === 'attack' && (Number(game.attacksUsedThisTurn) || 0) >= attackLimit) throw new Error('本回合已经用完【杀】次数');
-      if (['attack', 'steal', 'dismantle'].includes(heldCard.kind) && !action.targetId) throw new Error(heldCard.kind === 'attack' ? '使用【杀】必须选择目标' : '使用【顺手牵羊】必须选择目标');
-      if (!['attack', 'steal', 'dismantle'].includes(heldCard.kind) && action.targetId) throw new Error('该牌不能指定目标');
+      if (['attack', 'steal', 'dismantle', 'duel'].includes(heldCard.kind) && !action.targetId) throw new Error(heldCard.kind === 'attack' ? '使用【杀】必须选择目标' : heldCard.kind === 'duel' ? '使用【决斗】必须选择目标' : '使用锦囊必须选择目标');
+      if (!['attack', 'steal', 'dismantle', 'duel'].includes(heldCard.kind) && action.targetId) throw new Error('该牌不能指定目标');
       const played = playCard(game, { playerId: player.id, cardId: action.cardId, targetId: action.targetId ?? null });
       const card = played.card;
+      if (card.kind === 'duel') {
+        game.pendingResponse = { type: 'duel', sourceId: player.id, targetId: played.targetId, responderId: played.targetId };
+        game.log.push({ type: 'duel_started', sourceId: player.id, targetId: played.targetId });
+      }
       if (card.kind === 'attack') {
         game.attacksUsedThisTurn = (Number(game.attacksUsedThisTurn) || 0) + 1;
         const wineBonus = actorState.marks.wineBoost ? 1 : 0;
@@ -331,7 +354,7 @@ export class RoomManager {
       }),
       currentPlayerId: game?.players[game.currentPlayerIndex]?.id ?? null,
       turnNumber: game?.turnNumber ?? 0, winner: game?.winner ?? null, winningSide: game?.winningSide ?? null,
-      pendingResponse: game?.pendingResponse ? { type: game.pendingResponse.type, targetId: game.pendingResponse.targetId, responsePlayerId: game.pendingResponse.type === 'rescue' ? game.pendingResponse.order[game.pendingResponse.cursor] : game.pendingResponse.targetId } : null,
+      pendingResponse: game?.pendingResponse ? { type: game.pendingResponse.type, targetId: game.pendingResponse.targetId, responsePlayerId: game.pendingResponse.type === 'rescue' ? game.pendingResponse.order[game.pendingResponse.cursor] : game.pendingResponse.type === 'duel' ? game.pendingResponse.responderId : game.pendingResponse.targetId } : null,
       discardCount: game?.discard.length ?? 0,
       log: game?.log.slice(-20) ?? [],
     };
@@ -367,10 +390,10 @@ function playerCard(game, playerId, cardId) {
 function makeStarterDeck() {
   const deck = [];
   let id = 1;
-  const kinds = ['heal', 'dodge', 'attack', 'dodge', 'attack', 'draw2', 'steal', 'dismantle', 'heal', 'armor', 'wine'];
+  const kinds = ['heal', 'dodge', 'attack', 'dodge', 'attack', 'draw2', 'steal', 'dismantle', 'duel', 'heal', 'armor', 'wine'];
   for (let i = 0; i < 90; i++) {
     const kind = kinds[i % kinds.length];
-    const name = kind === 'heal' ? '桃' : kind === 'attack' ? '杀' : kind === 'dodge' ? '闪' : kind === 'draw2' ? '无中生有' : kind === 'steal' ? '顺手牵羊' : kind === 'dismantle' ? '过河拆桥' : kind === 'wine' ? '酒' : '护心镜';
+    const name = kind === 'heal' ? '桃' : kind === 'attack' ? '杀' : kind === 'dodge' ? '闪' : kind === 'draw2' ? '无中生有' : kind === 'steal' ? '顺手牵羊' : kind === 'dismantle' ? '过河拆桥' : kind === 'duel' ? '决斗' : kind === 'wine' ? '酒' : '护心镜';
     deck.push({ id: 'c' + id++, name, kind });
   }
   // Shuffle before dealing; a fixed repeating order leaks card identities and is unfair.
