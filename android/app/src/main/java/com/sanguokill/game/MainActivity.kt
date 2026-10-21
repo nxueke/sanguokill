@@ -568,7 +568,8 @@ class MainActivity : Activity() {
             "peach_garden_heal" -> "桃园结义：玩家 " + event.optString("targetId") + " 回复体力"
             "harvest_draw" -> "五谷丰登：玩家 " + event.optString("targetId") + " 摸了 " + event.optInt("count") + " 张牌"
             "attack_evaded" -> "玩家 " + event.optString("targetId") + " 用【闪】躲过攻击"
-            "damage" -> "玩家 " + event.optString("targetId") + " 受到 " + event.optInt("amount") + " 点伤害"
+            "damage" -> "玩家 " + event.optString("targetId") + " 受到 " + (if (event.optString("damageType") == "fire") "火焰" else if (event.optString("damageType") == "thunder") "雷电" else "普通") + "伤害 " + event.optInt("amount") + " 点"
+            "chain_broken" -> "元素伤害传导： " + event.optJSONArray("targetIds")?.length().orEmptyCount() + " 名横置角色解除横置"
             "healed" -> "玩家 " + event.optString("playerId") + " 回复体力"
             "rescue" -> "玩家 " + event.optString("rescuerId") + " 救援了玩家 " + event.optString("targetId")
             "player_dying" -> "玩家 " + event.optString("playerId") + " 进入濒死状态"
@@ -633,6 +634,8 @@ class MainActivity : Activity() {
         "wine" -> "强化：下一张【杀】伤害 +1"
         else -> kind
     }
+
+    private fun Int?.orEmptyCount(): Int = this ?: 0
 
     private fun showToast(message: String) {
         runOnUiThread { Toast.makeText(this, message, Toast.LENGTH_LONG).show() }
