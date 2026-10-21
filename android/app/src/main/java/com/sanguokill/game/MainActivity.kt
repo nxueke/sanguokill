@@ -517,6 +517,9 @@ class MainActivity : Activity() {
             "turn_started" -> "轮到玩家 " + event.optString("playerId")
             "card_played" -> "玩家 " + event.optString("playerId") + " 使用了卡牌"
             "response_requested" -> "玩家 " + event.optString("targetId") + " 需要响应【杀】"
+            "duel_started" -> "玩家 " + event.optString("sourceId") + " 对玩家 " + event.optString("targetId") + " 发起【决斗】"
+            "duel_attack" -> "玩家 " + event.optString("playerId") + " 在【决斗】中打出【杀】"
+            "duel_finished" -> "玩家 " + event.optString("loserId") + " 未能响应【决斗】"
             "attack_evaded" -> "玩家 " + event.optString("targetId") + " 用【闪】躲过攻击"
             "damage" -> "玩家 " + event.optString("targetId") + " 受到 " + event.optInt("amount") + " 点伤害"
             "healed" -> "玩家 " + event.optString("playerId") + " 回复体力"
@@ -560,9 +563,12 @@ class MainActivity : Activity() {
 
     private fun kindLabel(kind: String): String = when (kind) {
         "attack" -> "攻击"
+        "duel" -> "决斗"
         "heal" -> "回复"
         "dodge" -> "闪避"
-        "draw2" -> "摸两张牌"\n        "dismantle" -> "弃置目标一张牌"
+        "draw2" -> "摸两张牌"
+        "dismantle" -> "弃置目标一张牌"
+        "duel" -> "决斗：双方轮流打出【杀】"
         "steal" -> "获得目标随机一张手牌"
         "armor" -> "装备：抵挡下一次【杀】"
         "wine" -> "强化：下一张【杀】伤害 +1"
