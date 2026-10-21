@@ -252,3 +252,25 @@ test('original Wine card boosts the next attack by one damage', () => {
   assert.equal(guestState.hp, 2);
   assert.equal(hostState.marks.wineBoost, false);
 });
+
+
+test('duel alternates attack responses and damages the player who cannot answer', () => {
+  const { manager, room, host, guest } = startedRoom();
+  const hostState = room.game.players.find(p => p.id === host.id);
+  const guestState = room.game.players.find(p => p.id === guest.id);
+  hostState.hand.push({ id: 'duel-test', name: '决斗', kind: 'duel' });
+  guestState.hand.push({ id: 'duel-response', name: '杀', kind: 'attack' });
+
+  manager.act(host.token, { type: 'play_card', cardId: 'duel-test', targetId: guest.id });
+  assert.equal(room.game.pendingResponse.type, 'duel');
+  assert.equal(room.game.pendingResponse.responderId, guest.id);
+
+  manager.act(guest.token, { type: 'respond', response: 'attack', cardId: 'duel-response' });
+  assert.equal(room.game.pendingResponse.responderId, host.id);
+  manager.act(host.token, { type: 'respond', response: 'pass' });
+
+  assert.equal(hostState.hp, 3);
+  assert.equal(guestState.hp, 4);
+  assert.equal(room.game.pendingResponse, null);
+  assert.equal(room.game.log.some(entry => entry.type === 'duel_finished' && entry.loserId === host.id), true);
+});
