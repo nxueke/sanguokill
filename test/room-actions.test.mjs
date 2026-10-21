@@ -28,6 +28,13 @@ function startedRoom() {
   if (!hostState.hand.some(card => card.kind === 'dodge')) {
     hostState.hand.push({ id: 'fixture-dodge', name: '闪', kind: 'dodge' });
   }
+  // Keep the host's deterministic test hand within the new hand limit.
+  const requiredCards = [
+    hostState.hand.find(card => card.kind === 'attack'),
+    hostState.hand.find(card => card.kind === 'dodge')
+  ];
+  hostState.hand = [...new Map([...requiredCards, ...hostState.hand].map(card => [card.id, card])).values()]
+    .slice(0, hostState.hp);
   return { manager, room, host, guest };
 }
 
