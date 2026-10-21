@@ -489,7 +489,7 @@ class MainActivity : Activity() {
                                 }
                                 if (target != null) action.put("targetId", target.optString("id"))
                                 sendOnlineMessage(JSONObject().put("type", "action").put("action", action))
-                            } else if (kind == "attack" || kind == "steal" || kind == "dismantle" || kind == "duel" || kind == "supply_shortage") {
+                            } else if (kind == "attack" || kind == "fire_slash" || kind == "thunder_slash" || kind == "steal" || kind == "dismantle" || kind == "duel" || kind == "supply_shortage") {
                                 val target = players?.let { array ->
                                     (0 until array.length()).mapNotNull { array.optJSONObject(it) }
                                         .firstOrNull { it.optString("id") == selectedTargetId && it.optBoolean("alive", true) }
@@ -615,7 +615,9 @@ class MainActivity : Activity() {
     }
 
     private fun kindLabel(kind: String): String = when (kind) {
-        "attack" -> "攻击"
+        "attack" -> "普通【杀】"
+        "fire_slash" -> "火属性【杀】"
+        "thunder_slash" -> "雷属性【杀】"
         "duel" -> "决斗"
         "heal" -> "回复"
         "dodge" -> "闪避"
