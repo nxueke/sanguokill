@@ -293,3 +293,22 @@ test('Peach Garden heals every living player by one up to max HP', () => {
   assert.equal(thirdState.hp, 4);
   assert.equal(room.game.log.some(entry => entry.type === 'peach_garden_heal' && entry.targetId === guest.id), true);
 });
+
+
+test('Qinggang Sword ignores armor without consuming the armor slot', () => {
+  const { manager, room, host, guest } = startedRoom();
+  const hostState = room.game.players.find(p => p.id === host.id);
+  const guestState = room.game.players.find(p => p.id === guest.id);
+  hostState.hand.push({ id: 'qinggang-test', name: '青釭剑', kind: 'weapon' });
+  manager.act(host.token, { type: 'play_card', cardId: 'qinggang-test' });
+  guestState.armor = { id: 'guest-armor', name: '护心镜', kind: 'armor' };
+  hostState.hand.push({ id: 'qinggang-attack', name: '杀', kind: 'attack' });
+
+  manager.act(host.token, { type: 'play_card', cardId: 'qinggang-attack', targetId: guest.id });
+  manager.act(guest.token, { type: 'respond', response: 'pass' });
+
+  assert.equal(guestState.hp, 3);
+  assert.equal(guestState.armor.id, 'guest-armor');
+  assert.equal(hostState.weapon.name, '青釭剑');
+  assert.equal(manager.snapshot(room, host.id).players.find(p => p.id === host.id).weapon, '青釭剑');
+});
