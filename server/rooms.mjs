@@ -256,6 +256,8 @@ export class RoomManager {
       const heldCard = playerCard(game, player.id, action.cardId);
       if (heldCard.kind === 'dodge') throw new Error('【闪】只能在受到【杀】时响应');
       const actorState = game.players.find(p => p.id === player.id);
+      if (heldCard.kind === 'attack' && seatDistance(game, player.id, action.targetId) > (actorState.weapon?.range ?? 1)) throw new Error('目标超出【杀】的攻击距离');
+      if (heldCard.kind === 'steal' && seatDistance(game, player.id, action.targetId) > 1) throw new Error('【顺手牵羊】目标必须在距离 1 以内');
       if (heldCard.kind === 'supply_shortage' && game.players.find(p => p.id === action.targetId)?.marks.skipDraw) throw new Error('该玩家已经被【兵粮寸断】影响');
       const attackLimit = actorState?.generalIds?.includes('shu_blade') ? 2 : 1;
       if (heldCard.kind === 'attack' && (Number(game.attacksUsedThisTurn) || 0) >= attackLimit) throw new Error('本回合已经用完【杀】次数');
@@ -311,7 +313,7 @@ export class RoomManager {
         if (owner.weapon) game.discard.push(owner.weapon);
         const discardIndex = game.discard.findIndex(c => c.id === card.id);
         if (discardIndex >= 0) game.discard.splice(discardIndex, 1);
-        owner.weapon = { ...card, ignoreArmor: true };
+        owner.weapon = { ...card, ignoreArmor: true, range: 2 };
         game.log.push({ type: 'equipment_equipped', playerId: player.id, cardId: card.id, slot: 'weapon' });
       }
       if (card.kind === 'armor') {
@@ -425,6 +427,15 @@ export class RoomManager {
     do { code = roomCode(); } while (this.rooms.has(code));
     return code;
   }
+}
+
+function seatDistance(game, sourceId, targetId) {
+  const livingSeats = game.players.filter(player => player.alive).map(player => player.id);
+  const sourceSeat = livingSeats.indexOf(sourceId);
+  const targetSeat = livingSeats.indexOf(targetId);
+  if (sourceSeat < 0 || targetSeat < 0) return Infinity;
+  const direct = Math.abs(sourceSeat - targetSeat);
+  return Math.min(direct, livingSeats.length - direct);
 }
 
 function playerCard(game, playerId, cardId) {
