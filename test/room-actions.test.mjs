@@ -100,6 +100,9 @@ test('a player can use at most one attack per turn', () => {
     manager.act(host.token, { type: 'discard', cardIds: discardIds });
   }
   manager.act(host.token, { type: 'end_turn' });
+  const guestState = room.game.players.find(p => p.id === guest.id);
+  const guestExcess = guestState.hand.length - guestState.hp;
+  if (guestExcess > 0) manager.act(guest.token, { type: 'discard', cardIds: guestState.hand.slice(0, guestExcess).map(card => card.id) });
   manager.act(guest.token, { type: 'end_turn' });
   manager.act(room.players[2].token, { type: 'end_turn' });
   manager.act(host.token, { type: 'play_card', cardId: 'extra-attack', targetId: guest.id });
