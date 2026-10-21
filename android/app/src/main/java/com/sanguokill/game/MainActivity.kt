@@ -412,16 +412,17 @@ class MainActivity : Activity() {
             val message = when (responseType) {
                 "dodge" -> "【杀】目标 $targetName 需要打出【闪】或放弃响应。"
                 "duel" -> "【决斗】轮到 $targetName 打出【杀】；不出则受到伤害。"
+                "aoe" -> if (pending.optString("response") == "attack") "【南蛮入侵】轮到 $targetName 打出【杀】或放弃响应。" else "【万箭齐发】轮到 $targetName 打出【闪】或放弃响应。"
                 else -> "玩家 $targetName 濒死，当前等待救援玩家。"
             }
             root.addView(text(message, 16f, true))
             if (responsePlayer == playerId) {
-                root.addView(button(when (responseType) { "dodge" -> "不出【闪】"; "duel" -> "不出【杀】"; else -> "放弃救援" }) {
+                root.addView(button(when (responseType) { "dodge" -> "不出【闪】"; "duel" -> "不出【杀】"; "aoe" -> if (pending.optString("response") == "attack") "不出【杀】" else "不出【闪】"; else -> "放弃救援" }) {
                     val action = if (responseType == "rescue") JSONObject().put("type", "rescue").put("response", "pass")
                     else JSONObject().put("type", "respond").put("response", "pass")
                     sendOnlineMessage(JSONObject().put("type", "action").put("action", action))
                 })
-                root.addView(text(when (responseType) { "dodge" -> "点击手牌中的【闪】进行响应。"; "duel" -> "点击手牌中的【杀】进行响应。"; else -> "点击手牌中的【桃】救援。" }, 14f))
+                root.addView(text(when (responseType) { "dodge" -> "点击手牌中的【闪】进行响应。"; "duel" -> "点击手牌中的【杀】进行响应。"; "aoe" -> if (pending.optString("response") == "attack") "点击手牌中的【杀】响应南蛮入侵。" else "点击手牌中的【闪】响应万箭齐发。"; else -> "点击手牌中的【桃】救援。" }, 14f))
             } else {
                 root.addView(text("正在等待其他玩家响应，暂时不能操作。", 14f))
             }
@@ -467,6 +468,9 @@ class MainActivity : Activity() {
                         } else if (kind == "dodge" && pendingNow?.optString("type") == "dodge" && isExpectedResponder) {
                             sendOnlineMessage(JSONObject().put("type", "action").put("action",
                                 JSONObject().put("type", "respond").put("response", "dodge").put("cardId", cardId)))
+                        } else if (pendingNow?.optString("type") == "aoe" && isExpectedResponder && kind == pendingNow.optString("response")) {
+                            sendOnlineMessage(JSONObject().put("type", "action").put("action",
+                                JSONObject().put("type", "respond").put("response", kind).put("cardId", cardId)))
                         } else if (kind == "heal" && pendingNow?.optString("type") == "rescue" && isExpectedResponder) {
                             sendOnlineMessage(JSONObject().put("type", "action").put("action",
                                 JSONObject().put("type", "rescue").put("response", "save").put("cardId", cardId)))
