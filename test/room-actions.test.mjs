@@ -52,6 +52,8 @@ test('drawing is limited to once per turn and resets after turn advancement', ()
   const { manager, host, guest, room } = startedRoom();
   manager.act(host.token, { type: 'draw' });
   assert.throws(() => manager.act(host.token, { type: 'draw' }), /已经摸过牌/);
+  const hostState = room.game.players.find(p => p.id === host.id);
+  manager.act(host.token, { type: 'discard', cardIds: hostState.hand.slice(0, hostState.hand.length - hostState.hp).map(card => card.id) });
   manager.act(host.token, { type: 'end_turn' });
   manager.act(guest.token, { type: 'draw' });
   assert.equal(room.game.players.find(p => p.id === guest.id).hand.length, 6);
