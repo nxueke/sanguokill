@@ -62,7 +62,7 @@ export function createGameState({ playerCount, mode = GAME_MODES.STANDARD, deck 
   if (!Object.values(GAME_MODES).includes(mode)) throw new TypeError('Unsupported game mode');
   const players = Array.from({ length: playerCount }, (_, index) => ({
     id: `p${index + 1}`, seat: index, name: `Player ${index + 1}`,
-    hp: 4, maxHp: 4, hand: [], alive: true, generals: [], generalIds: [], generalSkills: [], armor: null, weapon: null, role: null, marks: {},
+    hp: 4, maxHp: 4, hand: [], alive: true, chained: false, generals: [], generalIds: [], generalSkills: [], armor: null, weapon: null, role: null, marks: {},
   }));
   return {
     version: 1, status: 'waiting', mode, playerCount, players, winningSide: null,
