@@ -252,7 +252,7 @@ export class RoomManager {
           if (dying.hp > 0) {
             dying.alive = true;
             game.dyingPlayerId = null;
-            game.pendingResponse = null;
+            game.pendingResponse = pending.resumeResponse ?? null;
             return room;
           }
         }
@@ -262,10 +262,10 @@ export class RoomManager {
             dying.alive = false;
             game.dyingPlayerId = null;
             game.log.push({ type: 'player_died', playerId: dying.id });
-            game.pendingResponse = null;
+            game.pendingResponse = pending.resumeResponse ?? null;
             evaluateVictory(game);
           } else {
-            game.pendingResponse = null;
+            game.pendingResponse = pending.resumeResponse ?? null;
           }
         }
         return room;
@@ -294,7 +294,12 @@ export class RoomManager {
       const card = played.card;
       if (card.kind === 'savage_assault' || card.kind === 'archery_attack') {
         const response = card.kind === 'savage_assault' ? 'attack' : 'dodge';
-        const order = game.players.filter(p => p.alive && p.id !== player.id).map(p => p.id);
+        const sourceIndex = game.players.findIndex(p => p.id === player.id);
+        const order = [];
+        for (let step = 1; step < game.players.length; step++) {
+          const target = game.players[(sourceIndex + step) % game.players.length];
+          if (target.alive) order.push(target.id);
+        }
         if (order.length) {
           game.pendingResponse = { type: 'aoe', aoe: card.kind, response, sourceId: player.id, order, cursor: 0, targetId: order[0] };
           game.log.push({ type: 'aoe_started', sourceId: player.id, aoe: card.kind, targets: order.length });
@@ -500,10 +505,10 @@ function playerCard(game, playerId, cardId) {
 function makeStarterDeck() {
   const deck = [];
   let id = 1;
-  const kinds = ['heal', 'dodge', 'attack', 'dodge', 'attack', 'draw2', 'steal', 'dismantle', 'duel', 'peach_garden', 'harvest', 'supply_shortage', 'heal', 'armor', 'weapon', 'wine', 'savage_assault', 'archery_attack', 'fire_attack', 'iron_chain'];
+  const kinds = ['heal', 'dodge', 'attack', 'dodge', 'attack', 'draw2', 'steal', 'dismantle', 'duel', 'peach_garden', 'harvest', 'supply_shortage', 'heal', 'armor', 'weapon', 'wine', 'savage_assault', 'archery_attack'];
   for (let i = 0; i < 90; i++) {
     const kind = kinds[i % kinds.length];
-    const name = kind === 'heal' ? '桃' : kind === 'attack' ? '杀' : kind === 'dodge' ? '闪' : kind === 'draw2' ? '无中生有' : kind === 'steal' ? '顺手牵羊' : kind === 'dismantle' ? '过河拆桥' : kind === 'duel' ? '决斗' : kind === 'peach_garden' ? '桃园结义' : kind === 'harvest' ? '五谷丰登' : kind === 'weapon' ? '青釭剑' : kind === 'supply_shortage' ? '兵粮寸断' : kind === 'wine' ? '酒' : kind === 'savage_assault' ? '南蛮入侵' : kind === 'archery_attack' ? '万箭齐发' : kind === 'fire_attack' ? '火攻' : kind === 'iron_chain' ? '铁索连环' : '护心镜';
+    const name = kind === 'heal' ? '桃' : kind === 'attack' ? '杀' : kind === 'dodge' ? '闪' : kind === 'draw2' ? '无中生有' : kind === 'steal' ? '顺手牵羊' : kind === 'dismantle' ? '过河拆桥' : kind === 'duel' ? '决斗' : kind === 'peach_garden' ? '桃园结义' : kind === 'harvest' ? '五谷丰登' : kind === 'weapon' ? '青釭剑' : kind === 'supply_shortage' ? '兵粮寸断' : kind === 'wine' ? '酒' : kind === 'savage_assault' ? '南蛮入侵' : kind === 'archery_attack' ? '万箭齐发' : '护心镜';
     deck.push({ id: 'c' + id++, name, kind });
   }
   // Shuffle before dealing; a fixed repeating order leaks card identities and is unfair.
