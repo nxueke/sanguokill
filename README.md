@@ -80,12 +80,12 @@ The project is not yet a complete, production-ready recreation of the full base 
 
 ## Remaining work
 
-- Full original card catalogue and individual card effects for the base and war expansion sets; current starter deck contains a small prototype subset (attack, dodge, Peach, draw-two, steal, armor, and original Wine boost).
-- Full official role edge cases, official landlord rules beyond the prototype bidding flow, and full card rules; the current original dual-general skills are a prototype and need balance/testing.
-- Equipment beyond one-hit armor, delayed tricks, and more skill triggers; current response/rescue rules are an initial implementation, not a full official rules engine.
-- Deploy the server and run real-device, multi-client online tests.
-- Reconnection and security edge-case tests; deployment and persistence.
-- End-to-end device tests and a release-signed APK.
+- Expand the current prototype subset toward the complete base and War expansion card catalogue; many official cards and their exact timing/targeting rules remain unimplemented.
+- Implement and test the complete official general roster, skills, identity-role edge cases, and landlord rules. The current six original generals and landlord bidding flow are prototypes, not official parity.
+- Add missing equipment, delayed tricks, judgment phases, and remaining skill triggers.
+- Deploy the WebSocket server to a publicly reachable host and run real-device, multi-client online tests.
+- Strengthen reconnection, session security, rate limiting, abuse protection, and persistence for public deployment.
+- Run end-to-end device tests and configure owner-controlled signing secrets for a production release APK.
 
 ## Asset and licensing policy
 
