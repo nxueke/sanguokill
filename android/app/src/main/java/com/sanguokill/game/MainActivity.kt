@@ -407,17 +407,19 @@ class MainActivity : Activity() {
                 (0 until array.length()).mapNotNull { array.optJSONObject(it) }
                     .firstOrNull { it.optString("id") == pending.optString("targetId") }?.optString("name")
             } ?: "玩家"
-            val message = if (responseType == "dodge") "【杀】目标 $targetName 需要打出【闪】或放弃响应。"
-                else "玩家 $targetName 濒死，当前等待救援玩家。"
+            val message = when (responseType) {
+                "dodge" -> "【杀】目标 $targetName 需要打出【闪】或放弃响应。"
+                "duel" -> "【决斗】轮到 $targetName 打出【杀】；不出则受到伤害。"
+                else -> "玩家 $targetName 濒死，当前等待救援玩家。"
+            }
             root.addView(text(message, 16f, true))
             if (responsePlayer == playerId) {
-                root.addView(button(if (responseType == "dodge") "不出【闪】" else "放弃救援") {
-                    val action = if (responseType == "dodge")
-                        JSONObject().put("type", "respond").put("response", "pass")
-                    else JSONObject().put("type", "rescue").put("response", "pass")
+                root.addView(button(when (responseType) { "dodge" -> "不出【闪】"; "duel" -> "不出【杀】"; else -> "放弃救援" }) {
+                    val action = if (responseType == "rescue") JSONObject().put("type", "rescue").put("response", "pass")
+                    else JSONObject().put("type", "respond").put("response", "pass")
                     sendOnlineMessage(JSONObject().put("type", "action").put("action", action))
                 })
-                root.addView(text(if (responseType == "dodge") "点击手牌中的【闪】进行响应。" else "点击手牌中的【桃】救援。", 14f))
+                root.addView(text(when (responseType) { "dodge" -> "点击手牌中的【闪】进行响应。"; "duel" -> "点击手牌中的【杀】进行响应。"; else -> "点击手牌中的【桃】救援。" }, 14f))
             } else {
                 root.addView(text("正在等待其他玩家响应，暂时不能操作。", 14f))
             }
@@ -457,7 +459,10 @@ class MainActivity : Activity() {
                     root.addView(cardButton("【$cardName】 · ${kindLabel(kind)}") {
                         val pendingNow = latestRoomState?.optJSONObject("pendingResponse")
                         val isExpectedResponder = pendingNow?.optString("responsePlayerId") == playerId
-                        if (kind == "dodge" && pendingNow?.optString("type") == "dodge" && isExpectedResponder) {
+                        if (kind == "attack" && pendingNow?.optString("type") == "duel" && isExpectedResponder) {
+                            sendOnlineMessage(JSONObject().put("type", "action").put("action",
+                                JSONObject().put("type", "respond").put("response", "attack").put("cardId", cardId)))
+                        } else if (kind == "dodge" && pendingNow?.optString("type") == "dodge" && isExpectedResponder) {
                             sendOnlineMessage(JSONObject().put("type", "action").put("action",
                                 JSONObject().put("type", "respond").put("response", "dodge").put("cardId", cardId)))
                         } else if (kind == "heal" && pendingNow?.optString("type") == "rescue" && isExpectedResponder) {
@@ -467,7 +472,7 @@ class MainActivity : Activity() {
                             showToast("【闪】只能在受到【杀】时响应。")
                         } else {
                             val action = JSONObject().put("type", "play_card").put("cardId", cardId)
-                            if (kind == "attack" || kind == "steal" || kind == "dismantle") {
+                            if (kind == "attack" || kind == "steal" || kind == "dismantle" || kind == "duel") {
                                 val target = players?.let { array ->
                                     (0 until array.length()).mapNotNull { array.optJSONObject(it) }
                                         .firstOrNull { it.optString("id") == selectedTargetId && it.optBoolean("alive", true) }
