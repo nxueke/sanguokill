@@ -451,3 +451,45 @@ test('end turn enforces hand limit and validates exact discard selection', () =>
   manager.act(host.token, { type: 'end_turn' });
   assert.equal(room.game.currentPlayerIndex, 1);
 });
+
+test('area-effect tricks resolve in seat order and require the correct response card', () => {
+  const { manager, room, host, guest } = startedRoom();
+  const third = room.players.find(p => p.id !== host.id && p.id !== guest.id);
+  const guestState = room.game.players.find(p => p.id === guest.id);
+  const thirdState = room.game.players.find(p => p.id === third.id);
+  room.game.players.find(p => p.id === host.id).hand.push({ id: 'savage-test', name: '南蛮入侵', kind: 'savage_assault' });
+  guestState.hand.push({ id: 'guest-attack-response', name: '杀', kind: 'attack' });
+  thirdState.hand.push({ id: 'third-attack-response', name: '杀', kind: 'attack' });
+
+  manager.act(host.token, { type: 'play_card', cardId: 'savage-test' });
+  assert.equal(room.game.pendingResponse.type, 'aoe');
+  assert.equal(room.game.pendingResponse.order[0], guest.id);
+  assert.throws(() => manager.act(third.token, { type: 'respond', response: 'attack', cardId: 'third-attack-response' }), /等待其他玩家/);
+  assert.throws(() => manager.act(guest.token, { type: 'respond', response: 'dodge', cardId: 'guest-attack-response' }), /打出/);
+  manager.act(guest.token, { type: 'respond', response: 'attack', cardId: 'guest-attack-response' });
+  assert.equal(room.game.pendingResponse.order[room.game.pendingResponse.cursor], third.id);
+  manager.act(third.token, { type: 'respond', response: 'pass' });
+  assert.equal(thirdState.hp, 3);
+  assert.equal(room.game.pendingResponse, null);
+});
+
+test('area-effect resolution resumes after a target is rescued from dying', () => {
+  const { manager, room, host, guest } = startedRoom();
+  const third = room.players.find(p => p.id !== host.id && p.id !== guest.id);
+  const guestState = room.game.players.find(p => p.id === guest.id);
+  const thirdState = room.game.players.find(p => p.id === third.id);
+  guestState.hp = 1;
+  guestState.hand.push({ id: 'rescue-for-aoe', name: '桃', kind: 'heal' });
+  room.game.players.find(p => p.id === host.id).hand.push({ id: 'arrows-test', name: '万箭齐发', kind: 'archery_attack' });
+  thirdState.hand.push({ id: 'third-dodge-response', name: '闪', kind: 'dodge' });
+
+  manager.act(host.token, { type: 'play_card', cardId: 'arrows-test' });
+  manager.act(guest.token, { type: 'respond', response: 'pass' });
+  assert.equal(room.game.pendingResponse.type, 'rescue');
+  manager.act(guest.token, { type: 'rescue', response: 'save', cardId: 'rescue-for-aoe' });
+  assert.equal(room.game.pendingResponse.type, 'aoe');
+  assert.equal(room.game.pendingResponse.order[room.game.pendingResponse.cursor], third.id);
+  manager.act(third.token, { type: 'respond', response: 'dodge', cardId: 'third-dodge-response' });
+  assert.equal(room.game.pendingResponse, null);
+  assert.equal(thirdState.hp, 4);
+});
