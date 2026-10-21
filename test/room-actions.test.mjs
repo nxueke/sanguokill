@@ -133,6 +133,22 @@ test('a player dies only after all rescue seats pass', () => {
   assert.equal(room.game.pendingResponse, null);
 });
 
+test('dismantle trick discards one target hand card without transferring it', () => {
+  const { manager, room, host, guest } = startedRoom();
+  const hostState = room.game.players.find(p => p.id === host.id);
+  const guestState = room.game.players.find(p => p.id === guest.id);
+  hostState.hand.push({ id: 'dismantle-test', name: '过河拆桥', kind: 'dismantle' });
+  guestState.hand.push({ id: 'guest-extra', name: '闪', kind: 'dodge' });
+  const guestBefore = guestState.hand.length;
+  const hostBefore = hostState.hand.length;
+  const discardBefore = room.game.discard.length;
+  manager.act(host.token, { type: 'play_card', cardId: 'dismantle-test', targetId: guest.id });
+  assert.equal(guestState.hand.length, guestBefore - 1);
+  assert.equal(hostState.hand.length, hostBefore - 1);
+  assert.equal(room.game.discard.length, discardBefore + 2);
+  assert.equal(room.game.log.some(entry => entry.type === 'card_dismantled' && entry.targetId === guest.id), true);
+});
+
 test('landlord room requires exactly three players and assigns hidden roles', () => {
   const manager = new RoomManager();
   const { room, player: host } = manager.create({ name: 'Host', mode: 'duel_lord', maxPlayers: 4 });
