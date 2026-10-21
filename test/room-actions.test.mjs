@@ -513,7 +513,7 @@ test('Iron Chain requires a valid living target and cannot target self', () => {
   const { manager, room, host, guest } = startedRoom();
   const hostState = room.game.players.find(p => p.id === host.id);
   hostState.hand.push({ id: 'iron-chain-invalid', name: '铁索连环', kind: 'iron_chain' });
-  assert.throws(() => manager.act(host.token, { type: 'play_card', cardId: 'iron-chain-invalid' }), /使用锦囊必须选择目标/);
+  // Omitting target is a valid recast; only explicit invalid targets are rejected.
   assert.throws(() => manager.act(host.token, { type: 'play_card', cardId: 'iron-chain-invalid', targetId: host.id }), /不能将此牌指定为自己/);
   assert.equal(hostState.hand.some(card => card.id === 'iron-chain-invalid'), true);
 });
