@@ -281,8 +281,8 @@ export class RoomManager {
       if (heldCard.kind === 'supply_shortage' && game.players.find(p => p.id === action.targetId)?.marks.skipDraw) throw new Error('该玩家已经被【兵粮寸断】影响');
       const attackLimit = actorState?.generalIds?.includes('shu_blade') ? 2 : 1;
       if (heldCard.kind === 'attack' && (Number(game.attacksUsedThisTurn) || 0) >= attackLimit) throw new Error('本回合已经用完【杀】次数');
-      if (['attack', 'steal', 'dismantle', 'duel', 'supply_shortage'].includes(heldCard.kind) && !action.targetId) throw new Error(heldCard.kind === 'attack' ? '使用【杀】必须选择目标' : heldCard.kind === 'duel' ? '使用【决斗】必须选择目标' : '使用锦囊必须选择目标');
-      if (!['attack', 'steal', 'dismantle', 'duel', 'supply_shortage'].includes(heldCard.kind) && action.targetId) throw new Error('该牌不能指定目标');
+      if (['attack', 'steal', 'dismantle', 'duel', 'supply_shortage', 'iron_chain'].includes(heldCard.kind) && !action.targetId) throw new Error(heldCard.kind === 'attack' ? '使用【杀】必须选择目标' : heldCard.kind === 'duel' ? '使用【决斗】必须选择目标' : '使用锦囊必须选择目标');
+      if (!['attack', 'steal', 'dismantle', 'duel', 'supply_shortage', 'iron_chain'].includes(heldCard.kind) && action.targetId) throw new Error('该牌不能指定目标');
       if (['attack', 'steal', 'dismantle', 'duel', 'supply_shortage'].includes(heldCard.kind)) {
         const target = game.players.find(p => p.id === action.targetId);
         if (!target || !target.alive) throw new Error('目标不存在或已经阵亡');
@@ -304,6 +304,11 @@ export class RoomManager {
           game.pendingResponse = { type: 'aoe', aoe: card.kind, response, sourceId: player.id, order, cursor: 0, targetId: order[0] };
           game.log.push({ type: 'aoe_started', sourceId: player.id, aoe: card.kind, targets: order.length });
         }
+      }
+      if (card.kind === 'iron_chain') {
+        const target = game.players.find(p => p.id === played.targetId);
+        target.chained = !target.chained;
+        game.log.push({ type: 'iron_chain_toggled', playerId: player.id, targetId: target.id, chained: target.chained });
       }
       if (card.kind === 'supply_shortage') {
         const target = game.players.find(p => p.id === played.targetId);
@@ -455,7 +460,7 @@ export class RoomManager {
       players: room.players.map((p, roomIndex) => {
         const gp = game?.players.find(x => x.id === p.id);
         return { id: p.id, name: p.name, host: p.id === room.hostId, connected: p.connected, bid: room.mode === GAME_MODES.DUEL_LORD ? (room.bids[p.id] ?? null) : undefined,
-          hp: gp?.hp ?? 4, maxHp: gp?.maxHp ?? 4, alive: gp?.alive ?? true, armor: gp?.armor?.name ?? null, weapon: gp?.weapon?.name ?? null, generals: gp?.generals?.length ? gp.generals : p.selectedGenerals.map(id => GENERAL_CATALOG.find(g => g.id === id)?.name ?? id), generalSkills: gp?.generalSkills?.length ? gp.generalSkills : p.selectedGenerals.map(id => GENERAL_CATALOG.find(g => g.id === id)?.skill ?? ''), handCount: gp?.hand.length ?? 0,
+          hp: gp?.hp ?? 4, maxHp: gp?.maxHp ?? 4, alive: gp?.alive ?? true, chained: gp?.chained ?? false, armor: gp?.armor?.name ?? null, weapon: gp?.weapon?.name ?? null, generals: gp?.generals?.length ? gp.generals : p.selectedGenerals.map(id => GENERAL_CATALOG.find(g => g.id === id)?.name ?? id), generalSkills: gp?.generalSkills?.length ? gp.generalSkills : p.selectedGenerals.map(id => GENERAL_CATALOG.find(g => g.id === id)?.skill ?? ''), handCount: gp?.hand.length ?? 0,
           hand: p.id === viewerId ? (gp?.hand ?? []) : undefined, role: p.id === viewerId ? (gp?.role ?? room.assignedRoles?.[roomIndex] ?? null) : undefined };
       }),
       currentPlayerId: game?.players[game.currentPlayerIndex]?.id ?? null,
@@ -505,10 +510,10 @@ function playerCard(game, playerId, cardId) {
 function makeStarterDeck() {
   const deck = [];
   let id = 1;
-  const kinds = ['heal', 'dodge', 'attack', 'dodge', 'attack', 'draw2', 'steal', 'dismantle', 'duel', 'peach_garden', 'harvest', 'supply_shortage', 'heal', 'armor', 'weapon', 'wine', 'savage_assault', 'archery_attack'];
+  const kinds = ['heal', 'dodge', 'attack', 'dodge', 'attack', 'draw2', 'steal', 'dismantle', 'duel', 'peach_garden', 'harvest', 'supply_shortage', 'heal', 'armor', 'weapon', 'wine', 'savage_assault', 'archery_attack', 'iron_chain'];
   for (let i = 0; i < 90; i++) {
     const kind = kinds[i % kinds.length];
-    const name = kind === 'heal' ? '桃' : kind === 'attack' ? '杀' : kind === 'dodge' ? '闪' : kind === 'draw2' ? '无中生有' : kind === 'steal' ? '顺手牵羊' : kind === 'dismantle' ? '过河拆桥' : kind === 'duel' ? '决斗' : kind === 'peach_garden' ? '桃园结义' : kind === 'harvest' ? '五谷丰登' : kind === 'weapon' ? '青釭剑' : kind === 'supply_shortage' ? '兵粮寸断' : kind === 'wine' ? '酒' : kind === 'savage_assault' ? '南蛮入侵' : kind === 'archery_attack' ? '万箭齐发' : '护心镜';
+    const name = kind === 'heal' ? '桃' : kind === 'attack' ? '杀' : kind === 'dodge' ? '闪' : kind === 'draw2' ? '无中生有' : kind === 'steal' ? '顺手牵羊' : kind === 'dismantle' ? '过河拆桥' : kind === 'duel' ? '决斗' : kind === 'peach_garden' ? '桃园结义' : kind === 'harvest' ? '五谷丰登' : kind === 'weapon' ? '青釭剑' : kind === 'supply_shortage' ? '兵粮寸断' : kind === 'wine' ? '酒' : kind === 'savage_assault' ? '南蛮入侵' : kind === 'archery_attack' ? '万箭齐发' : kind === 'iron_chain' ? '铁索连环' : '护心镜';
     deck.push({ id: 'c' + id++, name, kind });
   }
   // Shuffle before dealing; a fixed repeating order leaks card identities and is unfair.
