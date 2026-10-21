@@ -73,7 +73,9 @@ The project is not yet a complete, production-ready recreation of the full base 
 
 - State model supports 3–10 players; the current three-player landlord mode assigns one landlord versus two peasants and checks team victory.
 - Mode identifiers and client selection for identity, three-player landlord, and double-general selection from an original six-general roster with initial HP and passive-skill effects.
-- Start validation, drawing with discard-pile reshuffle, basic card play, server-side damage, once-per-turn attack limit, dodge response windows, Peach rescue, draw-two, steal, Wine attack-boost card, one-hit armor equipment, standard identity role distribution for 3–10 players, and initial role-based victory checks.
+- Server-side card rules include normal/fire/thunder Slash, Dodge, Peach, Wine, draw-two, steal, dismantle, Duel, Peach Garden, Harvest, Supply Shortage, Savage Assault, Archery Attack, Iron Chain toggle/recast, one-hit armor, and Qinggang-style weapon behavior.
+- Fire/thunder damage propagates through living chained players, unchains affected players, and pauses for rescue windows; automated tests cover elemental damage and rescue continuation.
+- Drawing with discard-pile reshuffle, once-per-turn attack limit, dodge response windows, Peach/Wine rescue, standard identity role distribution for 3–10 players, and initial role-based victory checks.
 - Room create/join/leave, host start, reconnect token handling, and per-player hand visibility.
 
 ## Remaining work
