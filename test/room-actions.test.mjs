@@ -565,21 +565,26 @@ test('Fire Slash and Thunder Slash preserve elemental damage type through dodge 
 });
 
 
-test('elemental damage propagates to all chained living players and breaks chains', () => {
-  const { manager, room, host, guest } = startedRoom();
-  const hostState = room.game.players.find(p => p.id === host.id);
-  const target = room.game.players.find(p => p.id === guest.id);
-  const other = room.game.players.find(p => p.id !== host.id && p.id !== guest.id);
-  target.chained = true;
-  other.chained = true;
-  hostState.hand.push({ id: 'fire-chain-test', name: '火杀', kind: 'fire_slash' });
-  manager.act(host.token, { type: 'play_card', cardId: 'fire-chain-test', targetId: guest.id });
-  manager.act(guest.token, { type: 'respond', response: 'pass' });
-  assert.equal(target.hp, 3);
-  assert.equal(other.hp, 3);
-  assert.equal(target.chained, false);
-  assert.equal(other.chained, false);
-  assert.equal(room.game.log.some(entry => entry.type === 'chain_broken' && entry.damageType === 'fire' && entry.targetIds.length === 2), true);
+test('fire and thunder damage propagate to all chained living players and break chains', () => {
+  for (const [kind, name, damageType] of [
+    ['fire_slash', '火杀', 'fire'],
+    ['thunder_slash', '雷杀', 'thunder'],
+  ]) {
+    const { manager, room, host, guest } = startedRoom();
+    const hostState = room.game.players.find(p => p.id === host.id);
+    const target = room.game.players.find(p => p.id === guest.id);
+    const other = room.game.players.find(p => p.id !== host.id && p.id !== guest.id);
+    target.chained = true;
+    other.chained = true;
+    hostState.hand.push({ id: kind + '-chain-test', name, kind });
+    manager.act(host.token, { type: 'play_card', cardId: kind + '-chain-test', targetId: guest.id });
+    manager.act(guest.token, { type: 'respond', response: 'pass' });
+    assert.equal(target.hp, 3);
+    assert.equal(other.hp, 3);
+    assert.equal(target.chained, false);
+    assert.equal(other.chained, false);
+    assert.equal(room.game.log.some(entry => entry.type === 'chain_broken' && entry.damageType === damageType && entry.targetIds.length === 2), true);
+  }
 });
 
 
