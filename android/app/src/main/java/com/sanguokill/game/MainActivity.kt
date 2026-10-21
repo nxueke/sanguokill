@@ -440,7 +440,7 @@ class MainActivity : Activity() {
                     val candidateId = candidate.optString("id")
                     if (candidateId == playerId || !candidate.optBoolean("alive", true)) continue
                     val selected = candidateId == selectedTargetId
-                    root.addView(button((if (selected) "✓ " else "") + candidate.optString("name") + " · 体力 " + candidate.optInt("hp", 4)) {
+                    root.addView(button((if (selected) "✓ " else "") + candidate.optString("name") + " · 体力 " + candidate.optInt("hp", 4) + (if (candidate.optBoolean("chained")) " · 横置" else "")) {
                         selectedTargetId = candidateId
                         renderOnlineState(state)
                     })
