@@ -128,13 +128,14 @@ export function playCard(state, { playerId, cardId, targetId = null }) {
   return { card, targetId };
 }
 
-export function applyDamage(state, { sourceId = null, targetId, amount = 1, deferDying = false }) {
+export function applyDamage(state, { sourceId = null, targetId, amount = 1, damageType = 'normal', deferDying = false }) {
   assertPlaying(state);
   if (!Number.isInteger(amount) || amount < 1 || amount > 10) throw new RangeError('Invalid damage amount');
   const target = requirePlayer(state, targetId);
   if (!target.alive) throw new Error('Target is already dead');
+  if (!['normal', 'fire', 'thunder'].includes(damageType)) throw new TypeError('Invalid damage type');
   target.hp -= amount;
-  state.log.push({ type: 'damage', sourceId, targetId, amount, hp: target.hp });
+  state.log.push({ type: 'damage', sourceId, targetId, amount, damageType, hp: target.hp });
   if (target.hp <= 0) {
     if (deferDying) {
       state.dyingPlayerId = targetId;
