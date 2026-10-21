@@ -473,7 +473,7 @@ class MainActivity : Activity() {
                             showToast("【闪】只能在受到【杀】时响应。")
                         } else {
                             val action = JSONObject().put("type", "play_card").put("cardId", cardId)
-                            if (kind == "attack" || kind == "steal" || kind == "dismantle" || kind == "duel") {
+                            if (kind == "attack" || kind == "steal" || kind == "dismantle" || kind == "duel" || kind == "supply_shortage") {
                                 val target = players?.let { array ->
                                     (0 until array.length()).mapNotNull { array.optJSONObject(it) }
                                         .firstOrNull { it.optString("id") == selectedTargetId && it.optBoolean("alive", true) }
@@ -534,6 +534,9 @@ class MainActivity : Activity() {
             "armor_blocked" -> "玩家 " + event.optString("targetId") + " 的护心镜抵挡了攻击"
             "armor_dismantled" -> "玩家 " + event.optString("targetId") + " 的护心镜被拆除"
             "weapon_dismantled" -> "玩家 " + event.optString("targetId") + " 的武器被拆除"
+            "supply_shortage_applied" -> "玩家 " + event.optString("targetId") + " 被【兵粮寸断】影响，下次摸牌跳过"
+            "supply_shortage_triggered" -> "玩家 " + event.optString("playerId") + " 受到【兵粮寸断】影响，跳过摸牌"
+            "supply_shortage_expired" -> "玩家 " + event.optString("playerId") + " 未摸牌，【兵粮寸断】效果结束"
             "equipment_equipped" -> "玩家 " + event.optString("playerId") + " 装备了" + if (event.optString("slot") == "weapon") "青釭剑" else "护心镜"
             "cards_drawn" -> "玩家 " + event.optString("playerId") + " 摸了 " + event.optInt("count") + " 张牌"
             "wine_used" -> "玩家 " + event.optString("playerId") + " 使用【酒】，下一张【杀】伤害 +1"
@@ -577,6 +580,7 @@ class MainActivity : Activity() {
         "duel" -> "决斗：双方轮流打出【杀】"
         "peach_garden" -> "桃园结义：所有存活角色回复1点体力"
         "weapon" -> "青釭剑：攻击无视目标防具"
+        "supply_shortage" -> "兵粮寸断：目标下次摸牌阶段跳过摸牌"
         "steal" -> "获得目标随机一张手牌"
         "armor" -> "装备：抵挡下一次【杀】"
         "wine" -> "强化：下一张【杀】伤害 +1"
