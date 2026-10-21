@@ -232,8 +232,8 @@ export class RoomManager {
           game.log.push({ type: 'general_skill', playerId: target.id, generalId: 'iron_wall', skill: 'attack_blocked' });
         } else {
           const damage = Number.isInteger(pending.damage) ? pending.damage : 1;
-          applyDamage(game, { sourceId: pending.sourceId, targetId: pending.targetId, amount: damage, damageType: pending.damageType ?? 'normal', deferDying: true });
-          if (game.dyingPlayerId) beginRescue(game, game.dyingPlayerId);
+          resolveDamage(game, { sourceId: pending.sourceId, targetId: pending.targetId, amount: damage, damageType: pending.damageType ?? 'normal' });
+          if (game.dyingPlayerId && game.pendingResponse?.type !== 'rescue') beginRescue(game, game.dyingPlayerId);
         }
         return room;
       }
@@ -256,7 +256,7 @@ export class RoomManager {
           if (dying.hp > 0) {
             dying.alive = true;
             game.dyingPlayerId = null;
-            game.pendingResponse = pending.resumeResponse ?? null;
+            resumeAfterRescue(game, pending.resumeResponse ?? null);
             return room;
           }
         }
@@ -266,7 +266,7 @@ export class RoomManager {
             dying.alive = false;
             game.dyingPlayerId = null;
             game.log.push({ type: 'player_died', playerId: dying.id });
-            game.pendingResponse = pending.resumeResponse ?? null;
+            resumeAfterRescue(game, pending.resumeResponse ?? null);
             evaluateVictory(game);
           } else {
             game.pendingResponse = pending.resumeResponse ?? null;
@@ -550,4 +550,45 @@ function beginRescue(game, targetId, resumeResponse = null) {
     if (p.alive) order.push(p.id);
   }
   game.pendingResponse = { type: 'rescue', targetId, order, cursor: 0, resumeResponse };
+}
+
+function resolveDamage(game, { sourceId, targetId, amount, damageType = 'normal' }) {
+  const target = game.players.find(p => p.id === targetId);
+  if (!target?.chained || !['fire', 'thunder'].includes(damageType)) {
+    return applyDamage(game, { sourceId, targetId, amount, damageType, deferDying: true });
+  }
+  const start = game.players.findIndex(p => p.id === targetId);
+  const chainedIds = [];
+  for (let step = 0; step < game.players.length; step++) {
+    const p = game.players[(start + step) % game.players.length];
+    if (p.alive && p.chained) chainedIds.push(p.id);
+  }
+  for (const id of chainedIds) {
+    const player = game.players.find(p => p.id === id);
+    player.chained = false;
+  }
+  game.log.push({ type: 'chain_broken', sourceId, targetIds: chainedIds, damageType });
+  resolveChainDamage(game, { sourceId, amount, damageType, targetIds: chainedIds, cursor: 0 });
+}
+
+function resolveChainDamage(game, queue) {
+  for (let cursor = queue.cursor; cursor < queue.targetIds.length; cursor++) {
+    const targetId = queue.targetIds[cursor];
+    const target = game.players.find(p => p.id === targetId);
+    if (!target?.alive) continue;
+    applyDamage(game, { sourceId: queue.sourceId, targetId, amount: queue.amount, damageType: queue.damageType, deferDying: true });
+    if (game.dyingPlayerId) {
+      beginRescue(game, game.dyingPlayerId, { ...queue, cursor: cursor + 1 });
+      return;
+    }
+  }
+}
+
+function resumeAfterRescue(game, resumeResponse) {
+  if (resumeResponse?.targetIds && ['fire', 'thunder'].includes(resumeResponse.damageType)) {
+    game.pendingResponse = null;
+    resolveChainDamage(game, resumeResponse);
+  } else {
+    game.pendingResponse = resumeResponse;
+  }
 }
