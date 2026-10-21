@@ -312,3 +312,20 @@ test('Qinggang Sword ignores armor without consuming the armor slot', () => {
   assert.equal(hostState.weapon.name, '青釭剑');
   assert.equal(manager.snapshot(room, host.id).players.find(p => p.id === host.id).weapon, '青釭剑');
 });
+
+
+test('Supply Shortage skips the target next draw and expires after use', () => {
+  const { manager, room, host, guest } = startedRoom();
+  const hostState = room.game.players.find(p => p.id === host.id);
+  const guestState = room.game.players.find(p => p.id === guest.id);
+  hostState.hand.push({ id: 'supply-test', name: '兵粮寸断', kind: 'supply_shortage' });
+  manager.act(host.token, { type: 'play_card', cardId: 'supply-test', targetId: guest.id });
+  assert.equal(guestState.marks.skipDraw, true);
+
+  manager.act(host.token, { type: 'end_turn' });
+  const handBefore = guestState.hand.length;
+  manager.act(guest.token, { type: 'draw' });
+  assert.equal(guestState.hand.length, handBefore);
+  assert.equal(guestState.marks.skipDraw, false);
+  assert.equal(room.game.log.some(entry => entry.type === 'supply_shortage_triggered' && entry.playerId === guest.id), true);
+});
