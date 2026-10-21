@@ -53,15 +53,21 @@ Initial JSON messages:
 
 The current protocol is an early implementation and should not be exposed publicly without rate limits, stronger session management, deployment configuration, and additional adversarial tests.
 
-## Android APK
+## Android APK and releases
 
-A push that changes `android/**` triggers the Android build workflow. To get the APK:
+A push that changes `android/**` triggers the Debug APK workflow. This is for testing only.
+
+A production release is built by the `Android Release` workflow. It requires a persistent signing keystore owned and backed up by the project owner. Configure these repository Actions secrets before releasing: `ANDROID_KEYSTORE_BASE64` (base64-encoded `.jks`/`.keystore`), `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD`. Never commit the keystore or passwords to the repository. Then run the workflow manually with a tag such as `v0.6.0`, or push a version tag. The workflow runs server tests, builds a signed release APK, calculates SHA-256, and publishes a GitHub Release. To get the APK:
 1. Open the repository's **Actions** tab.
 2. Open the latest **Android APK** workflow run.
 3. Wait until the build finishes successfully.
 4. Download the `sanguokill-debug-apk` artifact and extract `app-debug.apk`.
 
 This is a debug APK, not a signed Play Store release. Install only builds you trust.
+
+## Release status
+
+The project is not yet a complete, production-ready recreation of the full base and War expansion rules. The current version is an early prototype. A production release additionally requires owner-controlled signing secrets, a publicly deployed WebSocket server, real-device/multi-client testing, and the rule/security work listed below. Do not describe this prototype as a finished full-featured game.
 
 ## Implemented gameplay foundation
 
