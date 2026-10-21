@@ -440,7 +440,7 @@ class MainActivity : Activity() {
                     })
                 }
             }
-            root.addView(button("摸一张牌") {
+            root.addView(button("摸两张牌（摸牌阶段）") {
                 sendOnlineMessage(JSONObject().put("type", "action").put("action", JSONObject().put("type", "draw")))
             })
             root.addView(button("结束回合") {
