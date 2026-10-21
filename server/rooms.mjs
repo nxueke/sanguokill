@@ -169,6 +169,28 @@ export class RoomManager {
 
     if (game.pendingResponse) {
       const pending = game.pendingResponse;
+      if (pending.type === 'aoe') {
+        if (player.id !== pending.order[pending.cursor]) throw new Error('正在等待其他玩家响应群体锦囊');
+        const expectedKind = pending.response;
+        if (action?.type !== 'respond' || ![expectedKind, 'pass'].includes(action.response)) throw new Error(expectedKind === 'attack' ? '请打出【杀】或选择不出' : '请打出【闪】或选择不出');
+        if (action.response === expectedKind) {
+          const card = removeResponseCard(game, player.id, action.cardId, expectedKind);
+          game.discard.push(card);
+          game.log.push({ type: 'card_responded', playerId: player.id, card: card.name, response: expectedKind, sourceId: pending.sourceId });
+        } else {
+          applyDamage(game, { sourceId: pending.sourceId, targetId: player.id, amount: 1, deferDying: true });
+          game.log.push({ type: 'aoe_damage', sourceId: pending.sourceId, targetId: player.id, aoe: pending.aoe });
+          const nextPending = { ...pending, cursor: pending.cursor + 1 };
+          if (game.dyingPlayerId) {
+            beginRescue(game, game.dyingPlayerId, nextPending);
+            return room;
+          }
+        }
+        pending.cursor += 1;
+        if (pending.cursor >= pending.order.length) game.pendingResponse = null;
+        else pending.targetId = pending.order[pending.cursor];
+        return room;
+      }
       if (pending.type === 'duel') {
         if (player.id !== pending.responderId) throw new Error('正在等待另一名玩家进行【决斗】响应');
         if (action?.type !== 'respond' || !['attack', 'pass'].includes(action.response)) throw new Error('【决斗】中请打出【杀】或选择不出');
@@ -270,6 +292,14 @@ export class RoomManager {
       if (heldCard.kind === 'steal' && seatDistance(game, player.id, action.targetId) > 1) throw new Error('【顺手牵羊】目标必须在距离 1 以内');
       const played = playCard(game, { playerId: player.id, cardId: action.cardId, targetId: action.targetId ?? null });
       const card = played.card;
+      if (card.kind === 'savage_assault' || card.kind === 'archery_attack') {
+        const response = card.kind === 'savage_assault' ? 'attack' : 'dodge';
+        const order = game.players.filter(p => p.alive && p.id !== player.id).map(p => p.id);
+        if (order.length) {
+          game.pendingResponse = { type: 'aoe', aoe: card.kind, response, sourceId: player.id, order, cursor: 0, targetId: order[0] };
+          game.log.push({ type: 'aoe_started', sourceId: player.id, aoe: card.kind, targets: order.length });
+        }
+      }
       if (card.kind === 'supply_shortage') {
         const target = game.players.find(p => p.id === played.targetId);
         target.marks.skipDraw = true;
@@ -425,7 +455,7 @@ export class RoomManager {
       }),
       currentPlayerId: game?.players[game.currentPlayerIndex]?.id ?? null,
       turnNumber: game?.turnNumber ?? 0, winner: game?.winner ?? null, winningSide: game?.winningSide ?? null,
-      pendingResponse: game?.pendingResponse ? { type: game.pendingResponse.type, targetId: game.pendingResponse.targetId, responsePlayerId: game.pendingResponse.type === 'rescue' ? game.pendingResponse.order[game.pendingResponse.cursor] : game.pendingResponse.type === 'duel' ? game.pendingResponse.responderId : game.pendingResponse.targetId } : null,
+      pendingResponse: game?.pendingResponse ? { type: game.pendingResponse.type, targetId: game.pendingResponse.targetId, responsePlayerId: game.pendingResponse.type === 'rescue' ? game.pendingResponse.order[game.pendingResponse.cursor] : game.pendingResponse.type === 'duel' ? game.pendingResponse.responderId : game.pendingResponse.type === 'aoe' ? game.pendingResponse.order[game.pendingResponse.cursor] : game.pendingResponse.targetId } : null,
       discardCount: game?.discard.length ?? 0,
       log: game?.log.slice(-20) ?? [],
     };
@@ -470,10 +500,10 @@ function playerCard(game, playerId, cardId) {
 function makeStarterDeck() {
   const deck = [];
   let id = 1;
-  const kinds = ['heal', 'dodge', 'attack', 'dodge', 'attack', 'draw2', 'steal', 'dismantle', 'duel', 'peach_garden', 'harvest', 'supply_shortage', 'heal', 'armor', 'weapon', 'wine'];
+  const kinds = ['heal', 'dodge', 'attack', 'dodge', 'attack', 'draw2', 'steal', 'dismantle', 'duel', 'peach_garden', 'harvest', 'supply_shortage', 'heal', 'armor', 'weapon', 'wine', 'savage_assault', 'archery_attack', 'fire_attack', 'iron_chain'];
   for (let i = 0; i < 90; i++) {
     const kind = kinds[i % kinds.length];
-    const name = kind === 'heal' ? '桃' : kind === 'attack' ? '杀' : kind === 'dodge' ? '闪' : kind === 'draw2' ? '无中生有' : kind === 'steal' ? '顺手牵羊' : kind === 'dismantle' ? '过河拆桥' : kind === 'duel' ? '决斗' : kind === 'peach_garden' ? '桃园结义' : kind === 'harvest' ? '五谷丰登' : kind === 'weapon' ? '青釭剑' : kind === 'supply_shortage' ? '兵粮寸断' : kind === 'wine' ? '酒' : '护心镜';
+    const name = kind === 'heal' ? '桃' : kind === 'attack' ? '杀' : kind === 'dodge' ? '闪' : kind === 'draw2' ? '无中生有' : kind === 'steal' ? '顺手牵羊' : kind === 'dismantle' ? '过河拆桥' : kind === 'duel' ? '决斗' : kind === 'peach_garden' ? '桃园结义' : kind === 'harvest' ? '五谷丰登' : kind === 'weapon' ? '青釭剑' : kind === 'supply_shortage' ? '兵粮寸断' : kind === 'wine' ? '酒' : kind === 'savage_assault' ? '南蛮入侵' : kind === 'archery_attack' ? '万箭齐发' : kind === 'fire_attack' ? '火攻' : kind === 'iron_chain' ? '铁索连环' : '护心镜';
     deck.push({ id: 'c' + id++, name, kind });
   }
   // Shuffle before dealing; a fixed repeating order leaks card identities and is unfair.
@@ -492,12 +522,12 @@ function removeResponseCard(game, playerId, cardId, requiredKind) {
   return player.hand.splice(index, 1)[0];
 }
 
-function beginRescue(game, targetId) {
+function beginRescue(game, targetId, resumeResponse = null) {
   const targetIndex = game.players.findIndex(p => p.id === targetId);
   const order = [];
   for (let step = 0; step < game.players.length; step++) {
     const p = game.players[(targetIndex + step) % game.players.length];
     if (p.alive) order.push(p.id);
   }
-  game.pendingResponse = { type: 'rescue', targetId, order, cursor: 0 };
+  game.pendingResponse = { type: 'rescue', targetId, order, cursor: 0, resumeResponse };
 }
