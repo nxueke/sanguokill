@@ -481,11 +481,13 @@ class MainActivity : Activity() {
                                 }
                                 if (target == null) {
                                     showToast("没有可攻击的目标。")
-                                    return@button
+                                } else {
+                                    action.put("targetId", target.optString("id"))
+                                    sendOnlineMessage(JSONObject().put("type", "action").put("action", action))
                                 }
-                                action.put("targetId", target.optString("id"))
+                            } else {
+                                sendOnlineMessage(JSONObject().put("type", "action").put("action", action))
                             }
-                            sendOnlineMessage(JSONObject().put("type", "action").put("action", action))
                         }
                     })
                 }
