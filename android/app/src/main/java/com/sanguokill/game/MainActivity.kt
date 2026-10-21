@@ -557,7 +557,7 @@ class MainActivity : Activity() {
         "attack" -> "攻击"
         "heal" -> "回复"
         "dodge" -> "闪避"
-        "draw2" -> "摸两张牌"
+        "draw2" -> "摸两张牌"\n        "dismantle" -> "弃置目标一张牌"
         "steal" -> "获得目标随机一张手牌"
         "armor" -> "装备：抵挡下一次【杀】"
         "wine" -> "强化：下一张【杀】伤害 +1"
