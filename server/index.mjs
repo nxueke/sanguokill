@@ -31,7 +31,7 @@ function broadcast(room, event = 'room_state') {
 function scheduleResponseTimeout(room) {
   const pending = room.game?.pendingResponse;
   const key = pending
-    ? [pending.type, pending.targetId, pending.type === 'rescue' ? pending.order[pending.cursor] : pending.targetId, pending.cursor ?? 0].join(':')
+    ? [pending.type, pending.targetId, pending.type === 'rescue' ? pending.order[pending.cursor] : pending.type === 'duel' ? pending.responderId : pending.targetId, pending.cursor ?? 0].join(':')
     : null;
   const current = responseTimers.get(room.code);
   if (current?.key === key) return;
@@ -45,7 +45,7 @@ function scheduleResponseTimeout(room) {
     if (!liveRoom || !livePending) return;
     const expectedId = livePending.type === 'rescue'
       ? livePending.order[livePending.cursor]
-      : livePending.targetId;
+      : livePending.type === 'duel' ? livePending.responderId : livePending.targetId;
     const expectedPlayer = liveRoom.players.find(p => p.id === expectedId);
     if (!expectedPlayer) return;
     try {
