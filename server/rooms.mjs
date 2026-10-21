@@ -232,7 +232,7 @@ export class RoomManager {
           game.log.push({ type: 'general_skill', playerId: target.id, generalId: 'iron_wall', skill: 'attack_blocked' });
         } else {
           const damage = Number.isInteger(pending.damage) ? pending.damage : 1;
-          applyDamage(game, { sourceId: pending.sourceId, targetId: pending.targetId, amount: damage, deferDying: true });
+          applyDamage(game, { sourceId: pending.sourceId, targetId: pending.targetId, amount: damage, damageType: pending.damageType ?? 'normal', deferDying: true });
           if (game.dyingPlayerId) beginRescue(game, game.dyingPlayerId);
         }
         return room;
@@ -284,15 +284,15 @@ export class RoomManager {
       const actorState = game.players.find(p => p.id === player.id);
       if (heldCard.kind === 'supply_shortage' && game.players.find(p => p.id === action.targetId)?.marks.skipDraw) throw new Error('该玩家已经被【兵粮寸断】影响');
       const attackLimit = actorState?.generalIds?.includes('shu_blade') ? 2 : 1;
-      if (heldCard.kind === 'attack' && (Number(game.attacksUsedThisTurn) || 0) >= attackLimit) throw new Error('本回合已经用完【杀】次数');
-      if (['attack', 'steal', 'dismantle', 'duel', 'supply_shortage'].includes(heldCard.kind) && !action.targetId) throw new Error(heldCard.kind === 'attack' ? '使用【杀】必须选择目标' : heldCard.kind === 'duel' ? '使用【决斗】必须选择目标' : '使用锦囊必须选择目标');
-      if (!['attack', 'steal', 'dismantle', 'duel', 'supply_shortage', 'iron_chain'].includes(heldCard.kind) && action.targetId) throw new Error('该牌不能指定目标');
-      if (['attack', 'steal', 'dismantle', 'duel', 'supply_shortage'].includes(heldCard.kind) || (heldCard.kind === 'iron_chain' && action.targetId)) {
+      if (['attack', 'fire_slash', 'thunder_slash'].includes(heldCard.kind) && (Number(game.attacksUsedThisTurn) || 0) >= attackLimit) throw new Error('本回合已经用完【杀】次数');
+      if (['attack', 'fire_slash', 'thunder_slash', 'steal', 'dismantle', 'duel', 'supply_shortage'].includes(heldCard.kind) && !action.targetId) throw new Error(heldCard.kind === 'attack' ? '使用【杀】必须选择目标' : heldCard.kind === 'duel' ? '使用【决斗】必须选择目标' : '使用锦囊必须选择目标');
+      if (!['attack', 'fire_slash', 'thunder_slash', 'steal', 'dismantle', 'duel', 'supply_shortage', 'iron_chain'].includes(heldCard.kind) && action.targetId) throw new Error('该牌不能指定目标');
+      if (['attack', 'fire_slash', 'thunder_slash', 'steal', 'dismantle', 'duel', 'supply_shortage'].includes(heldCard.kind) || (heldCard.kind === 'iron_chain' && action.targetId)) {
         const target = game.players.find(p => p.id === action.targetId);
         if (!target || !target.alive) throw new Error('目标不存在或已经阵亡');
         if (target.id === player.id) throw new Error('不能将此牌指定为自己');
       }
-      if (heldCard.kind === 'attack' && seatDistance(game, player.id, action.targetId) > (actorState.weapon?.range ?? 1)) throw new Error('目标超出【杀】的攻击距离');
+      if (['attack', 'fire_slash', 'thunder_slash'].includes(heldCard.kind) && seatDistance(game, player.id, action.targetId) > (actorState.weapon?.range ?? 1)) throw new Error('目标超出【杀】的攻击距离');
       if (heldCard.kind === 'steal' && seatDistance(game, player.id, action.targetId) > 1) throw new Error('【顺手牵羊】目标必须在距离 1 以内');
       const played = playCard(game, { playerId: player.id, cardId: action.cardId, targetId: action.targetId ?? null });
       const card = played.card;
@@ -328,12 +328,13 @@ export class RoomManager {
         game.pendingResponse = { type: 'duel', sourceId: player.id, targetId: played.targetId, responderId: played.targetId };
         game.log.push({ type: 'duel_started', sourceId: player.id, targetId: played.targetId });
       }
-      if (card.kind === 'attack') {
+      if (['attack', 'fire_slash', 'thunder_slash'].includes(card.kind)) {
         game.attacksUsedThisTurn = (Number(game.attacksUsedThisTurn) || 0) + 1;
         const wineBonus = actorState.marks.wineBoost ? 1 : 0;
         actorState.marks.wineBoost = false;
         const damage = (actorState.generalIds?.includes('swift_arrow') ? 2 : 1) + wineBonus;
-        game.pendingResponse = { type: 'dodge', sourceId: player.id, targetId: played.targetId, damage };
+        const damageType = card.kind === 'fire_slash' ? 'fire' : card.kind === 'thunder_slash' ? 'thunder' : 'normal';
+        game.pendingResponse = { type: 'dodge', sourceId: player.id, targetId: played.targetId, damage, damageType };
         game.log.push({ type: 'response_requested', response: 'dodge', sourceId: player.id, targetId: played.targetId });
       }
       if (card.kind === 'wine') {
@@ -519,10 +520,10 @@ function playerCard(game, playerId, cardId) {
 function makeStarterDeck() {
   const deck = [];
   let id = 1;
-  const kinds = ['heal', 'dodge', 'attack', 'dodge', 'attack', 'draw2', 'steal', 'dismantle', 'duel', 'peach_garden', 'harvest', 'supply_shortage', 'heal', 'armor', 'weapon', 'wine', 'savage_assault', 'archery_attack', 'iron_chain'];
+  const kinds = ['heal', 'dodge', 'attack', 'dodge', 'attack', 'draw2', 'steal', 'dismantle', 'duel', 'peach_garden', 'harvest', 'supply_shortage', 'heal', 'armor', 'weapon', 'wine', 'savage_assault', 'archery_attack', 'iron_chain', 'fire_slash', 'thunder_slash'];
   for (let i = 0; i < 90; i++) {
     const kind = kinds[i % kinds.length];
-    const name = kind === 'heal' ? '桃' : kind === 'attack' ? '杀' : kind === 'dodge' ? '闪' : kind === 'draw2' ? '无中生有' : kind === 'steal' ? '顺手牵羊' : kind === 'dismantle' ? '过河拆桥' : kind === 'duel' ? '决斗' : kind === 'peach_garden' ? '桃园结义' : kind === 'harvest' ? '五谷丰登' : kind === 'weapon' ? '青釭剑' : kind === 'supply_shortage' ? '兵粮寸断' : kind === 'wine' ? '酒' : kind === 'savage_assault' ? '南蛮入侵' : kind === 'archery_attack' ? '万箭齐发' : kind === 'iron_chain' ? '铁索连环' : '护心镜';
+    const name = kind === 'heal' ? '桃' : kind === 'attack' ? '杀' : kind === 'fire_slash' ? '火杀' : kind === 'thunder_slash' ? '雷杀' : kind === 'dodge' ? '闪' : kind === 'draw2' ? '无中生有' : kind === 'steal' ? '顺手牵羊' : kind === 'dismantle' ? '过河拆桥' : kind === 'duel' ? '决斗' : kind === 'peach_garden' ? '桃园结义' : kind === 'harvest' ? '五谷丰登' : kind === 'weapon' ? '青釭剑' : kind === 'supply_shortage' ? '兵粮寸断' : kind === 'wine' ? '酒' : kind === 'savage_assault' ? '南蛮入侵' : kind === 'archery_attack' ? '万箭齐发' : kind === 'iron_chain' ? '铁索连环' : '护心镜';
     deck.push({ id: 'c' + id++, name, kind });
   }
   // Shuffle before dealing; a fixed repeating order leaks card identities and is unfair.
