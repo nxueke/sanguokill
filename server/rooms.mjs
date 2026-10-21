@@ -201,7 +201,7 @@ export class RoomManager {
         }
         game.pendingResponse = null;
         const target = game.players.find(p => p.id === pending.targetId);
-        if (target?.armor) {
+        if (target?.armor && !game.players.find(p => p.id === pending.sourceId)?.weapon?.ignoreArmor) {
           game.discard.push(target.armor);
           target.armor = null;
           game.log.push({ type: 'armor_blocked', targetId: pending.targetId });
@@ -293,6 +293,14 @@ export class RoomManager {
           if (target.hp > before) game.log.push({ type: 'peach_garden_heal', playerId: player.id, targetId: target.id, hp: target.hp });
         }
       }
+      if (card.kind === 'weapon') {
+        const owner = game.players.find(p => p.id === player.id);
+        if (owner.weapon) game.discard.push(owner.weapon);
+        const discardIndex = game.discard.findIndex(c => c.id === card.id);
+        if (discardIndex >= 0) game.discard.splice(discardIndex, 1);
+        owner.weapon = { ...card, ignoreArmor: true };
+        game.log.push({ type: 'equipment_equipped', playerId: player.id, cardId: card.id, slot: 'weapon' });
+      }
       if (card.kind === 'armor') {
         const owner = game.players.find(p => p.id === player.id);
         if (owner.armor) game.discard.push(owner.armor);
@@ -357,7 +365,7 @@ export class RoomManager {
       players: room.players.map((p, roomIndex) => {
         const gp = game?.players.find(x => x.id === p.id);
         return { id: p.id, name: p.name, host: p.id === room.hostId, connected: p.connected, bid: room.mode === GAME_MODES.DUEL_LORD ? (room.bids[p.id] ?? null) : undefined,
-          hp: gp?.hp ?? 4, maxHp: gp?.maxHp ?? 4, alive: gp?.alive ?? true, armor: gp?.armor?.name ?? null, generals: gp?.generals?.length ? gp.generals : p.selectedGenerals.map(id => GENERAL_CATALOG.find(g => g.id === id)?.name ?? id), generalSkills: gp?.generalSkills?.length ? gp.generalSkills : p.selectedGenerals.map(id => GENERAL_CATALOG.find(g => g.id === id)?.skill ?? ''), handCount: gp?.hand.length ?? 0,
+          hp: gp?.hp ?? 4, maxHp: gp?.maxHp ?? 4, alive: gp?.alive ?? true, armor: gp?.armor?.name ?? null, weapon: gp?.weapon?.name ?? null, generals: gp?.generals?.length ? gp.generals : p.selectedGenerals.map(id => GENERAL_CATALOG.find(g => g.id === id)?.name ?? id), generalSkills: gp?.generalSkills?.length ? gp.generalSkills : p.selectedGenerals.map(id => GENERAL_CATALOG.find(g => g.id === id)?.skill ?? ''), handCount: gp?.hand.length ?? 0,
           hand: p.id === viewerId ? (gp?.hand ?? []) : undefined, role: p.id === viewerId ? (gp?.role ?? room.assignedRoles?.[roomIndex] ?? null) : undefined };
       }),
       currentPlayerId: game?.players[game.currentPlayerIndex]?.id ?? null,
@@ -398,10 +406,10 @@ function playerCard(game, playerId, cardId) {
 function makeStarterDeck() {
   const deck = [];
   let id = 1;
-  const kinds = ['heal', 'dodge', 'attack', 'dodge', 'attack', 'draw2', 'steal', 'dismantle', 'duel', 'peach_garden', 'heal', 'armor', 'wine'];
+  const kinds = ['heal', 'dodge', 'attack', 'dodge', 'attack', 'draw2', 'steal', 'dismantle', 'duel', 'peach_garden', 'heal', 'armor', 'weapon', 'wine'];
   for (let i = 0; i < 90; i++) {
     const kind = kinds[i % kinds.length];
-    const name = kind === 'heal' ? '桃' : kind === 'attack' ? '杀' : kind === 'dodge' ? '闪' : kind === 'draw2' ? '无中生有' : kind === 'steal' ? '顺手牵羊' : kind === 'dismantle' ? '过河拆桥' : kind === 'duel' ? '决斗' : kind === 'peach_garden' ? '桃园结义' : kind === 'wine' ? '酒' : '护心镜';
+    const name = kind === 'heal' ? '桃' : kind === 'attack' ? '杀' : kind === 'dodge' ? '闪' : kind === 'draw2' ? '无中生有' : kind === 'steal' ? '顺手牵羊' : kind === 'dismantle' ? '过河拆桥' : kind === 'duel' ? '决斗' : kind === 'peach_garden' ? '桃园结义' : kind === 'weapon' ? '青釭剑' : kind === 'wine' ? '酒' : '护心镜';
     deck.push({ id: 'c' + id++, name, kind });
   }
   // Shuffle before dealing; a fixed repeating order leaks card identities and is unfair.
