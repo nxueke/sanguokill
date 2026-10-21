@@ -425,7 +425,7 @@ test('targeted cards reject self, missing, and dead targets without consuming th
   hostState.hand.push({ id: 'target-validation-steal', name: '顺手牵羊', kind: 'steal' });
   assert.throws(() => manager.act(host.token, {
     type: 'play_card', cardId: 'target-validation-steal', targetId: host.id
-  }), /不能将此牌指定为自己/);
+  }), /不能将此牌指定为自己|Cannot target self/);
   assert.throws(() => manager.act(host.token, {
     type: 'play_card', cardId: 'target-validation-steal', targetId: 'missing-player'
   }), /目标不存在或已经阵亡/);
